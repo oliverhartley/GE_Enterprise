@@ -7,8 +7,9 @@ function createOverview() {
   var countryIdx = headers.indexOf("Account: Billing Country");
   var revenueIdx = headers.indexOf("Workload Gross Annual Recurring Revenue (converted)");
   var partnerIdx = headers.indexOf("Partner");
+  var geIdx = headers.indexOf("Aparently is GE");
   
-  if (countryIdx === -1 || revenueIdx === -1 || partnerIdx === -1) {
+  if (countryIdx === -1 || revenueIdx === -1 || partnerIdx === -1 || geIdx === -1) {
     Logger.log("Required headers not found.");
     return;
   }
@@ -20,8 +21,12 @@ function createOverview() {
     var country = row[countryIdx];
     var revenueStr = row[revenueIdx];
     var partner = row[partnerIdx];
+    var isGE = row[geIdx];
     
     if (!country) continue;
+    
+    // Filter: Only count rows where 'Aparently is GE' is not empty
+    if (!isGE || isGE.toString().trim() === "") continue;
     
     var revenue = parseRevenue(revenueStr);
     
