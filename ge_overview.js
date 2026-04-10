@@ -141,7 +141,7 @@ function createOverview() {
                .setNumberFormat("$#,##0")
                .setHorizontalAlignment("right");
   
-  // 5. Alternating Rows (Zebra Striping)
+  // 5. Alternating Rows (Zebra Striping) - For Overview we keep simple alternating
   for (var i = startRow + 1; i < startRow + output.length; i++) {
     if ((i - startRow) % 2 === 0) {
       overviewSheet.getRange(i, 1, 1, output[0].length).setBackground("#f8f9fa");
@@ -221,6 +221,12 @@ function showDrillDown(country) {
   if (geIdx === -1) geIdx = headers.indexOf("Aparently is");
   var workloadIdx = headers.indexOf("Workload: Workload Name");
   
+  // New Requested Indices
+  var progressIdx = headers.indexOf("Workload Progress");
+  var accNameIdx = headers.indexOf("Account: Account Name");
+  var accOwnerIdx = headers.indexOf("Account: Account Owner");
+  var ceOwnerIdx = headers.indexOf("Primary CE Technical Owner");
+  
   if (countryIdx === -1 || revenueIdx === -1 || partnerIdx === -1 || geIdx === -1 || workloadIdx === -1) {
     SpreadsheetApp.getUi().alert("Required headers not found in data sheet.");
     return;
@@ -238,7 +244,14 @@ function showDrillDown(country) {
       var workload = row[workloadIdx] || "N/A";
       var revenue = parseRevenue(row[revenueIdx]);
       
-      rows.push([partner, workload, revenue]);
+      // Fallbacks for new fields
+      var progress = progressIdx !== -1 ? row[progressIdx] : "N/A";
+      var accName = accNameIdx !== -1 ? row[accNameIdx] : "N/A";
+      var accOwner = accOwnerIdx !== -1 ? row[accOwnerIdx] : "N/A";
+      var ceOwner = ceOwnerIdx !== -1 ? row[ceOwnerIdx] : "N/A";
+      
+      // Order: Partner, Workload Name, Workload Progress, Account Name, Account Owner, CE Owner, Revenue
+      rows.push([partner, workload, progress, accName, accOwner, ceOwner, revenue]);
     }
   }
   
@@ -265,6 +278,10 @@ function showDrillDown(country) {
   var output = [[
     "Partner",
     "Workload Name",
+    "Workload Progress",
+    "Account: Account Name",
+    "Account: Account Owner",
+    "Primary CE Technical Owner",
     "Gross Annual Recurring Revenue"
   ]];
   
@@ -304,11 +321,28 @@ function showDrillDown(country) {
              .setFontWeight("bold")
              .setHorizontalAlignment("center");
              
-  drillSheet.getRange(startRow + 1, 3, output.length - 1, 1)
+  // Currency format for the last column (Revenue)
+  drillSheet.getRange(startRow + 1, 7, output.length - 1, 1)
             .setNumberFormat("$#,##0")
             .setHorizontalAlignment("right");
             
   drillSheet.autoResizeColumns(1, output[0].length);
+  
+  // ---- Grouped Zebra Striping ----
+  var currentPartner = "";
+  var useGrey = false;
+  
+  for (var i = 0; i < rows.length; i++) {
+    var partner = rows[i][0];
+    if (partner !== currentPartner) {
+      useGrey = !useGrey;
+      currentPartner = partner;
+    }
+    
+    var rowIdx = startRow + 1 + i;
+    var color = useGrey ? "#f2f2f2" : "#ffffff";
+    drillSheet.getRange(rowIdx, 1, 1, output[0].length).setBackground(color);
+  }
   
   // Add Filter in Row 3
   drillSheet.getRange(startRow, 1, output.length, output[0].length).createFilter();
