@@ -326,7 +326,13 @@ function showDrillDown(country) {
             .setNumberFormat("$#,##0")
             .setHorizontalAlignment("right");
             
-  drillSheet.autoResizeColumns(1, output[0].length);
+  // Set Column Width to 200 for all columns
+  for (var col = 1; col <= output[0].length; col++) {
+    drillSheet.setColumnWidth(col, 200);
+  }
+  
+  // Enable Wrap for all data and headers
+  drillSheet.getRange(startRow, 1, output.length, output[0].length).setWrap(true);
   
   // ---- Grouped Zebra Striping ----
   var currentPartner = "";
