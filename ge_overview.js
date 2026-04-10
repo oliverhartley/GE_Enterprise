@@ -55,15 +55,25 @@ function createOverview() {
       summary[country] = {
         count: 0,
         partners: {},
-        totalRev: 0
+        totalRevWithPartner: 0,
+        countWithPartner: 0,
+        totalRevNoPartner: 0,
+        countNoPartner: 0
       };
     }
     
     summary[country].count++;
-    if (partner) {
+    
+    var isNoPartner = !partner || partner.toString().trim() === "" || partner.toString().trim() === "No Partner";
+    
+    if (!isNoPartner) {
       summary[country].partners[partner] = true;
+      summary[country].totalRevWithPartner += revenue;
+      summary[country].countWithPartner++;
+    } else {
+      summary[country].totalRevNoPartner += revenue;
+      summary[country].countNoPartner++;
     }
-    summary[country].totalRev += revenue;
   }
   
   // Prepare output data (Adding Checkbox column as Col 1)
@@ -73,7 +83,9 @@ function createOverview() {
     "Amount of workloads",
     "Amount of partners",
     "Total amount of Gross Anual Recurring",
-    "Average of the gross recurring"
+    "Average of the gross recurring",
+    "Total Gross Annual Recurring (No Partner)",
+    "Average Gross Recurring (No Partner)"
   ]];
   
   // SORT BY COUNTRY
@@ -83,14 +95,19 @@ function createOverview() {
     var country = sortedCountries[i];
     var s = summary[country];
     var partnerCount = Object.keys(s.partners).length;
-    var avg = s.count > 0 ? s.totalRev / s.count : 0;
+    
+    var avgWithPartner = s.countWithPartner > 0 ? s.totalRevWithPartner / s.countWithPartner : 0;
+    var avgNoPartner = s.countNoPartner > 0 ? s.totalRevNoPartner / s.countNoPartner : 0;
+    
     output.push([
       false, // Checkbox placeholder
       country,
-      s.count,
+      s.count, // Total workloads
       partnerCount,
-      s.totalRev,
-      avg
+      s.totalRevWithPartner,
+      avgWithPartner,
+      s.totalRevNoPartner,
+      avgNoPartner
     ]);
   }
   
@@ -136,8 +153,8 @@ function createOverview() {
                .setNumberFormat("0")
                .setHorizontalAlignment("center");
                
-  // Column E & F: Currency
-  overviewSheet.getRange(startRow + 1, 5, output.length - 1, 2)
+  // Columns E, F, G, H: Currency (4 columns starting at Col 5)
+  overviewSheet.getRange(startRow + 1, 5, output.length - 1, 4)
                .setNumberFormat("$#,##0")
                .setHorizontalAlignment("right");
   
@@ -348,18 +365,6 @@ function showDrillDown(country) {
   
   // Switch to the new sheet
   ss.setActiveSheet(drillSheet);
-}
-
-/**
- * Goes back to Overview and hides the drill down sheet.
- */
-function goBackToOverview(drillSheet) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var overviewSheet = ss.getSheetByName("GE_Overview");
-  if (overviewSheet) {
-    ss.setActiveSheet(overviewSheet);
-    drillSheet.hideSheet();
-  }
 }
 
 /**
