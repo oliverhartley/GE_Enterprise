@@ -1,20 +1,32 @@
 function createOverview() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var dataSheet = ss.getSheets()[0]; // Assume data is in the first sheet
-  var data = dataSheet.getDataRange().getValues();
   
+  // Target the specific sheet by name as requested
+  var dataSheet = ss.getSheetByName("OHL - Workload Report LATAM");
+  if (!dataSheet) {
+    dataSheet = ss.getSheets()[0]; // Fallback to first sheet if name not found
+    Logger.log("Sheet 'OHL - Workload Report LATAM' not found, using first sheet.");
+  }
+  
+  var data = dataSheet.getDataRange().getValues();
   var headers = data[0];
+  
   var countryIdx = headers.indexOf("Account: Billing Country");
   var revenueIdx = headers.indexOf("Workload Gross Annual Recurring Revenue (converted)");
   var partnerIdx = headers.indexOf("Partner");
+  
+  // Try to find the 'Aparently is GE' column, or fallback to 'Aparently is'
   var geIdx = headers.indexOf("Aparently is GE");
+  if (geIdx === -1) {
+    geIdx = headers.indexOf("Aparently is");
+  }
   
   if (countryIdx === -1 || revenueIdx === -1 || partnerIdx === -1 || geIdx === -1) {
-    Logger.log("Required headers not found.");
+    Logger.log("Required headers not found. Found headers: " + JSON.stringify(headers));
     return;
   }
   
-  // List of South American countries (including both Brazil and Brasil to be safe)
+  // List of South American countries
   var southAmericanCountries = [
     "Argentina", "Bolivia", "Brazil", "Brasil", "Chile", "Colombia", "Ecuador", 
     "Guyana", "Paraguay", "Peru", "Suriname", "Uruguay", "Venezuela"
@@ -31,7 +43,7 @@ function createOverview() {
     
     if (!country) continue;
     
-    // Filter 1: Only count rows where 'Aparently is GE' is not empty
+    // Filter 1: Only count rows where 'Aparently is GE' (or 'Aparently is') is not empty
     if (!isGE || isGE.toString().trim() === "") continue;
     
     // Filter 2: Only count South American countries
