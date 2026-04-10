@@ -167,15 +167,25 @@ function parseRevenue(str) {
 function onSelectionChange(e) {
   var range = e.range;
   var sheet = range.getSheet();
+  var sheetName = sheet.getName();
   
-  // Only trigger in GE_Overview sheet
-  if (sheet.getName() !== "GE_Overview") return;
+  // Case 1: In GE_Overview sheet, clicking a country
+  if (sheetName === "GE_Overview") {
+    if (range.getColumn() === 1 && range.getRow() >= 6) {
+      var country = range.getValue();
+      if (country) {
+        showDrillDown(country);
+      }
+    }
+  }
   
-  // Only trigger if clicking in Column A (Country) and below headers (Row 5 is header, so Row >= 6)
-  if (range.getColumn() === 1 && range.getRow() >= 6) {
-    var country = range.getValue();
-    if (country) {
-      showDrillDown(country);
+  // Case 2: In a DrillDown sheet, clicking the "Back" cell
+  if (sheetName.indexOf("DrillDown_") === 0) {
+    if (range.getColumn() === 1 && range.getRow() === 1) {
+      var val = range.getValue();
+      if (val === "<- Back to GE_Overview") {
+        goBackToOverview(sheet);
+      }
     }
   }
 }
@@ -234,20 +244,28 @@ function showDrillDown(country) {
   if (!drillSheet) {
     drillSheet = ss.insertSheet(sheetName);
   } else {
+    drillSheet.showSheet(); // Unhide if hidden
     drillSheet.clear();
   }
   
-  // Write data
-  drillSheet.getRange(1, 1, output.length, output[0].length).setValues(output);
+  // Set Back button in A1
+  drillSheet.getRange(1, 1).setValue("<- Back to GE_Overview")
+             .setFontColor("#1a73e8")
+             .setFontWeight("bold")
+             .setHorizontalAlignment("left");
+  
+  // Write data starting at Row 3
+  var startRow = 3;
+  drillSheet.getRange(startRow, 1, output.length, output[0].length).setValues(output);
   
   // Formatting
-  var headerRange = drillSheet.getRange(1, 1, 1, output[0].length);
+  var headerRange = drillSheet.getRange(startRow, 1, 1, output[0].length);
   headerRange.setBackground("#34a853") // Google Green for drill down
              .setFontColor("#ffffff")
              .setFontWeight("bold")
              .setHorizontalAlignment("center");
              
-  drillSheet.getRange(2, 3, output.length - 1, 1)
+  drillSheet.getRange(startRow + 1, 3, output.length - 1, 1)
             .setNumberFormat("$#,##0")
             .setHorizontalAlignment("right");
             
@@ -255,4 +273,16 @@ function showDrillDown(country) {
   
   // Switch to the new sheet
   ss.setActiveSheet(drillSheet);
+}
+
+/**
+ * Goes back to Overview and hides the drill down sheet.
+ */
+function goBackToOverview(drillSheet) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var overviewSheet = ss.getSheetByName("GE_Overview");
+  if (overviewSheet) {
+    ss.setActiveSheet(overviewSheet);
+    drillSheet.hideSheet();
+  }
 }
