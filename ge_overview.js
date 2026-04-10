@@ -75,7 +75,57 @@ function createOverview() {
     overviewSheet.clear();
   }
   
+  // Write data
   overviewSheet.getRange(1, 1, output.length, output[0].length).setValues(output);
+  
+  // ---- Formatting ----
+  
+  // 1. Header Formatting
+  var headerRange = overviewSheet.getRange(1, 1, 1, output[0].length);
+  headerRange.setBackground("#1a73e8") // Google Blue
+             .setFontColor("#ffffff")
+             .setFontWeight("bold")
+             .setHorizontalAlignment("center")
+             .setVerticalAlignment("middle");
+  overviewSheet.setRowHeight(1, 30);
+  
+  // 2. Data Formatting
+  var dataRange = overviewSheet.getRange(2, 1, output.length - 1, output[0].length);
+  dataRange.setFontSize(10)
+           .setVerticalAlignment("middle");
+  
+  // 3. Column Specific Formatting
+  // Column A: Country
+  overviewSheet.getRange(2, 1, output.length - 1, 1).setHorizontalAlignment("left");
+  
+  // Column B & C: Counts
+  overviewSheet.getRange(2, 2, output.length - 1, 2).setHorizontalAlignment("center");
+  
+  // Column D & E: Currency
+  overviewSheet.getRange(2, 4, output.length - 1, 2)
+               .setNumberFormat("$#,##0")
+               .setHorizontalAlignment("right");
+  
+  // 4. Alternating Rows (Zebra Striping)
+  for (var i = 2; i <= output.length; i++) {
+    if (i % 2 === 0) {
+      overviewSheet.getRange(i, 1, 1, output[0].length).setBackground("#f8f9fa");
+    } else {
+      overviewSheet.getRange(i, 1, 1, output[0].length).setBackground("#ffffff");
+    }
+  }
+  
+  // 5. Borders
+  overviewSheet.getRange(1, 1, output.length, output[0].length)
+               .setBorder(true, true, true, true, true, true, "#e0e0e0", SpreadsheetApp.BorderStyle.SOLID);
+  
+  // 6. Auto-resize columns
+  overviewSheet.autoResizeColumns(1, output[0].length);
+  
+  // Set row heights for data
+  for (var i = 2; i <= output.length; i++) {
+    overviewSheet.setRowHeight(i, 20);
+  }
 }
 
 function parseRevenue(str) {
