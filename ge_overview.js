@@ -76,16 +76,16 @@ function createOverview() {
     }
   }
   
-  // Prepare output data (Adding Checkbox column as Col 1)
+  // Prepare output data with more readable headers
   var output = [[
     "Drill Down",
-    "Account: Billing Country",
-    "Amount of workloads",
-    "Amount of partners",
-    "Total amount of Gross Anual Recurring",
-    "Average of the gross recurring",
-    "Total Gross Annual Recurring (No Partner)",
-    "Average Gross Recurring (No Partner)"
+    "Country",
+    "Total Workloads",
+    "Total Partners",
+    "Total Revenue (With Partner)",
+    "Avg Revenue (With Partner)",
+    "Total Revenue (No Partner)",
+    "Avg Revenue (No Partner)"
   ]];
   
   // SORT BY COUNTRY
