@@ -359,25 +359,25 @@ function showDrillDown(country) {
   // Try to use native Tables feature (using createTable)
   var tableCreated = false;
   try {
-    if (typeof drillSheet.createTable === 'function') {
-      // createTable(range, hasHeaders)
-      var table = drillSheet.createTable(dataRange, true);
-      
-      // Set name to match the sheet (sanitized)
-      table.setName("Table_" + country.replace(/[^a-zA-Z0-9]/g, "_"));
-      
-      // Apply theme safely
-      var theme = getThemeForCountry(country);
-      if (theme) {
-        table.setTableTheme(theme);
-      }
-      
-      table.setHasStickyHeader(true);
-      table.setHasStripedRows(true);
-      tableCreated = true;
-      Logger.log("Native table created for " + country);
+    // REMOVED the typeof check to let it fail if it doesn't exist, so we can catch it!
+    var table = drillSheet.createTable(dataRange, true);
+    
+    // Set name to match the sheet (sanitized)
+    table.setName("Table_" + country.replace(/[^a-zA-Z0-9]/g, "_"));
+    
+    // Apply theme safely
+    var theme = getThemeForCountry(country);
+    if (theme) {
+      table.setTableTheme(theme);
     }
+    
+    table.setHasStickyHeader(true);
+    table.setHasStripedRows(true);
+    tableCreated = true;
+    Logger.log("Native table created for " + country);
   } catch (e) {
+    // ADDED UI Alert to show the error to the user!
+    SpreadsheetApp.getUi().alert("Notice: Native table feature failed (" + e.message + "). Falling back to simulation.");
     Logger.log("Failed to create native table, falling back to simulation: " + e.message);
   }
   
