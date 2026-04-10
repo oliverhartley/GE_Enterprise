@@ -267,8 +267,8 @@ function showDrillDown(country) {
       var accOwner = accOwnerIdx !== -1 ? row[accOwnerIdx] : "N/A";
       var ceOwner = ceOwnerIdx !== -1 ? row[ceOwnerIdx] : "N/A";
       
-      // Order: Partner, Workload Name, Workload Progress, Account Name, Account Owner, CE Owner, Revenue
-      rows.push([partner, workload, progress, accName, accOwner, ceOwner, revenue]);
+      // NEW ORDER: Partner, Account Name, Workload Name, Workload Progress, Annual Revenue, Account Owner, Primary CE Owner
+      rows.push([partner, accName, workload, progress, revenue, accOwner, ceOwner]);
     }
   }
   
@@ -292,15 +292,15 @@ function showDrillDown(country) {
     return 0;
   });
   
-  // More readable headers for Drill Down
+  // Headers in requested order
   var output = [[
     "Partner",
+    "Account Name",
     "Workload Name",
     "Workload Progress",
-    "Account Name",
+    "Annual Revenue",
     "Account Owner",
-    "Primary CE Owner",
-    "Annual Revenue"
+    "Primary CE Owner"
   ]];
   
   output = output.concat(rows);
@@ -339,8 +339,8 @@ function showDrillDown(country) {
              .setFontWeight("bold")
              .setHorizontalAlignment("center");
              
-  // Currency format for the last column (Revenue)
-  drillSheet.getRange(startRow + 1, 7, output.length - 1, 1)
+  // Currency format for the 5th column (Annual Revenue)
+  drillSheet.getRange(startRow + 1, 5, output.length - 1, 1)
             .setNumberFormat("$#,##0")
             .setHorizontalAlignment("right");
             
