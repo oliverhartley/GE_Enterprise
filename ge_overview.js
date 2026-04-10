@@ -171,7 +171,7 @@ function parseRevenue(str) {
 // ---- Checkbox Navigation Feature ----
 
 /**
- * Automatically triggers when a cell is selected.
+ * Automatically triggers when a cell is edited.
  */
 function onEdit(e) {
   var range = e.range;
@@ -243,12 +243,18 @@ function showDrillDown(country) {
     return;
   }
   
-  // SORT BY PARTNER NAME (Column 1 in output)
+  // SORT BY PARTNER NAME (Column 1 in output), putting "No Partner" at the end
   rows.sort(function(a, b) {
-    var nameA = a[0].toString().toLowerCase();
-    var nameB = b[0].toString().toLowerCase();
-    if (nameA < nameB) return -1;
-    if (nameA > nameB) return 1;
+    var nameA = a[0].toString();
+    var nameB = b[0].toString();
+    
+    if (nameA === "No Partner" && nameB !== "No Partner") return 1;
+    if (nameA !== "No Partner" && nameB === "No Partner") return -1;
+    
+    var lowerA = nameA.toLowerCase();
+    var lowerB = nameB.toLowerCase();
+    if (lowerA < lowerB) return -1;
+    if (lowerA > lowerB) return 1;
     return 0;
   });
   
@@ -267,6 +273,13 @@ function showDrillDown(country) {
     drillSheet = ss.insertSheet(sheetName);
   } else {
     drillSheet.showSheet(); // Unhide if hidden
+    
+    // Remove existing filter if any to prevent errors
+    var existingFilter = drillSheet.getFilter();
+    if (existingFilter) {
+      existingFilter.remove();
+    }
+    
     drillSheet.clear();
   }
   
@@ -292,6 +305,9 @@ function showDrillDown(country) {
             .setHorizontalAlignment("right");
             
   drillSheet.autoResizeColumns(1, output[0].length);
+  
+  // Add Filter in Row 3
+  drillSheet.getRange(startRow, 1, output.length, output[0].length).createFilter();
   
   // Switch to the new sheet
   ss.setActiveSheet(drillSheet);
