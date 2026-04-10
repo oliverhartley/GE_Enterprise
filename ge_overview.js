@@ -96,40 +96,41 @@ function createOverview() {
     overviewSheet.clear();
   }
   
-  // Write data
-  overviewSheet.getRange(1, 1, output.length, output[0].length).setValues(output);
+  // Write data starting at Row 5
+  var startRow = 5;
+  overviewSheet.getRange(startRow, 1, output.length, output[0].length).setValues(output);
   
   // ---- Formatting ----
   
-  // 1. Header Formatting
-  var headerRange = overviewSheet.getRange(1, 1, 1, output[0].length);
+  // 1. Header Formatting (Row 5)
+  var headerRange = overviewSheet.getRange(startRow, 1, 1, output[0].length);
   headerRange.setBackground("#1a73e8") // Google Blue
              .setFontColor("#ffffff")
              .setFontWeight("bold")
              .setHorizontalAlignment("center")
              .setVerticalAlignment("middle");
-  overviewSheet.setRowHeight(1, 30);
+  overviewSheet.setRowHeight(startRow, 30);
   
-  // 2. Data Formatting
-  var dataRange = overviewSheet.getRange(2, 1, output.length - 1, output[0].length);
+  // 2. Data Formatting (Rows 6 and below)
+  var dataRange = overviewSheet.getRange(startRow + 1, 1, output.length - 1, output[0].length);
   dataRange.setFontSize(10)
            .setVerticalAlignment("middle");
   
   // 3. Column Specific Formatting
   // Column A: Country
-  overviewSheet.getRange(2, 1, output.length - 1, 1).setHorizontalAlignment("left");
+  overviewSheet.getRange(startRow + 1, 1, output.length - 1, 1).setHorizontalAlignment("left");
   
   // Column B & C: Counts
-  overviewSheet.getRange(2, 2, output.length - 1, 2).setHorizontalAlignment("center");
+  overviewSheet.getRange(startRow + 1, 2, output.length - 1, 2).setHorizontalAlignment("center");
   
   // Column D & E: Currency
-  overviewSheet.getRange(2, 4, output.length - 1, 2)
+  overviewSheet.getRange(startRow + 1, 4, output.length - 1, 2)
                .setNumberFormat("$#,##0")
                .setHorizontalAlignment("right");
   
   // 4. Alternating Rows (Zebra Striping)
-  for (var i = 2; i <= output.length; i++) {
-    if (i % 2 === 0) {
+  for (var i = startRow + 1; i < startRow + output.length; i++) {
+    if ((i - startRow) % 2 === 0) {
       overviewSheet.getRange(i, 1, 1, output[0].length).setBackground("#f8f9fa");
     } else {
       overviewSheet.getRange(i, 1, 1, output[0].length).setBackground("#ffffff");
@@ -137,14 +138,14 @@ function createOverview() {
   }
   
   // 5. Borders
-  overviewSheet.getRange(1, 1, output.length, output[0].length)
+  overviewSheet.getRange(startRow, 1, output.length, output[0].length)
                .setBorder(true, true, true, true, true, true, "#e0e0e0", SpreadsheetApp.BorderStyle.SOLID);
   
   // 6. Auto-resize columns
   overviewSheet.autoResizeColumns(1, output[0].length);
   
   // Set row heights for data
-  for (var i = 2; i <= output.length; i++) {
+  for (var i = startRow + 1; i < startRow + output.length; i++) {
     overviewSheet.setRowHeight(i, 20);
   }
 }
