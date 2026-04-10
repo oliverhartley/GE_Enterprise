@@ -130,8 +130,12 @@ function createOverview() {
   overviewSheet.getRange(startRow + 1, 1, output.length - 1, 1).setHorizontalAlignment("center");
   // Column B: Country
   overviewSheet.getRange(startRow + 1, 2, output.length - 1, 1).setHorizontalAlignment("left");
-  // Column C & D: Counts
-  overviewSheet.getRange(startRow + 1, 3, output.length - 1, 2).setHorizontalAlignment("center");
+  
+  // Column C & D: Counts (Forcing normal number format with "0")
+  overviewSheet.getRange(startRow + 1, 3, output.length - 1, 2)
+               .setNumberFormat("0")
+               .setHorizontalAlignment("center");
+               
   // Column E & F: Currency
   overviewSheet.getRange(startRow + 1, 5, output.length - 1, 2)
                .setNumberFormat("$#,##0")
