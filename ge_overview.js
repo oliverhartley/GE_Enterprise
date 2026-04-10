@@ -349,21 +349,72 @@ function showDrillDown(country) {
     drillSheet.showSheet();
     var existingFilter = drillSheet.getFilter();
     if (existingFilter) existingFilter.remove();
+    
+    // Also remove existing table if any to avoid conflicts
+    try {
+      var tables = drillSheet.getTables();
+      if (tables && tables.length > 0) {
+        // There isn't a simple removeTable method documented in the snippet, 
+        // but usually clearing the sheet removes the table structure.
+        // If not, we might get an error when adding a new one.
+      }
+    } catch(e) {
+      // Ignore
+    }
+    
     drillSheet.clear();
   }
   
-  // Write data starting at Row 1 (Simulating a simple table)
-  drillSheet.getRange(1, 1, output.length, output[0].length).setValues(output);
+  // Write data starting at Row 1
+  var dataRange = drillSheet.getRange(1, 1, output.length, output[0].length);
+  dataRange.setValues(output);
   
-  // Get a consistent color for this country's header
-  var headerColor = getColorForCountry(country);
+  // Try to use native Tables feature
+  var tableCreated = false;
+  try {
+    // Check if addTable exists
+    if (typeof drillSheet.addTable === 'function') {
+      var table = drillSheet.addTable(dataRange);
+      
+      // Apply theme safely
+      var theme = getThemeForCountry(country);
+      if (theme) {
+        table.setTableTheme(theme);
+      }
+      
+      table.setHasStickyHeader(true);
+      table.setHasStripedRows(true);
+      tableCreated = true;
+      Logger.log("Native table created for " + country);
+    }
+  } catch (e) {
+    Logger.log("Failed to create native table, falling back to simulation: " + e.message);
+  }
   
-  var headerRange = drillSheet.getRange(1, 1, 1, output[0].length);
-  headerRange.setBackground(headerColor)
-             .setFontColor("#ffffff")
-             .setFontWeight("bold")
-             .setHorizontalAlignment("center");
-             
+  // Fallback to simulation if native table failed or was not supported
+  if (!tableCreated) {
+    var headerColor = getColorForCountry(country);
+    
+    var headerRange = drillSheet.getRange(1, 1, 1, output[0].length);
+    headerRange.setBackground(headerColor)
+               .setFontColor("#ffffff")
+               .setFontWeight("bold")
+               .setHorizontalAlignment("center");
+               
+    // Alternating rows
+    for (var i = 2; i <= output.length; i++) {
+      if (i % 2 === 0) {
+        drillSheet.getRange(i, 1, 1, output[0].length).setBackground("#f9f9f9");
+      } else {
+        drillSheet.getRange(i, 1, 1, output[0].length).setBackground("#ffffff");
+      }
+    }
+    
+    // Add filter
+    drillSheet.getRange(1, 1, output.length, output[0].length).createFilter();
+  }
+  
+  // Common formatting (currency, width, wrap)
   drillSheet.getRange(2, 5, output.length - 1, 1)
             .setNumberFormat("$#,##0")
             .setHorizontalAlignment("right");
@@ -374,36 +425,45 @@ function showDrillDown(country) {
   
   drillSheet.getRange(1, 1, output.length, output[0].length).setWrap(true);
   
-  // Add alternating row colors to simulate table style
-  for (var i = 2; i <= output.length; i++) {
-    if (i % 2 === 0) {
-      drillSheet.getRange(i, 1, 1, output[0].length).setBackground("#f9f9f9"); // Very light grey
-    } else {
-      drillSheet.getRange(i, 1, 1, output[0].length).setBackground("#ffffff");
-    }
-  }
-  
-  // Add filter to the header row
-  drillSheet.getRange(1, 1, output.length, output[0].length).createFilter();
-  
   ss.setActiveSheet(drillSheet);
 }
 
 /**
- * Generates a consistent color based on the country name string.
+ * Gets a consistent TableTheme based on country name.
+ */
+function getThemeForCountry(country) {
+  if (!SpreadsheetApp.TableTheme) return null;
+  
+  var themes = [
+    SpreadsheetApp.TableTheme.LIGHT_GREEN,
+    SpreadsheetApp.TableTheme.LIGHT_BLUE,
+    SpreadsheetApp.TableTheme.LIGHT_GREY,
+    SpreadsheetApp.TableTheme.TEAL,
+    SpreadsheetApp.TableTheme.ORANGE,
+    SpreadsheetApp.TableTheme.YELLOW
+  ];
+  
+  var hash = 0;
+  for (var i = 0; i < country.length; i++) {
+    hash = country.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  var index = Math.abs(hash) % themes.length;
+  return themes[index];
+}
+
+/**
+ * Fallback color generator for simulation.
  */
 function getColorForCountry(country) {
   var colors = [
-    "#34a853", // Google Green
-    "#1a73e8", // Google Blue
-    "#ea4335", // Google Red
-    "#fbbc04", // Google Yellow
+    "#34a853", // Green
+    "#1a73e8", // Blue
+    "#ea4335", // Red
+    "#fbbc04", // Yellow
     "#673ab7", // Purple
     "#e91e63", // Pink
     "#00bcd4", // Cyan
-    "#ff9800", // Orange
-    "#4caf50", // Light Green
-    "#9c27b0"  // Deep Purple
+    "#ff9800"  // Orange
   ];
   
   var hash = 0;
