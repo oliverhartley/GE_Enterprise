@@ -158,3 +158,101 @@ function parseRevenue(str) {
   var val = parseFloat(cleanStr);
   return isNaN(val) ? 0 : val;
 }
+
+// ---- Drill Down Feature ----
+
+/**
+ * Automatically triggers when a cell is selected.
+ */
+function onSelectionChange(e) {
+  var range = e.range;
+  var sheet = range.getSheet();
+  
+  // Only trigger in GE_Overview sheet
+  if (sheet.getName() !== "GE_Overview") return;
+  
+  // Only trigger if clicking in Column A (Country) and below headers (Row 5 is header, so Row >= 6)
+  if (range.getColumn() === 1 && range.getRow() >= 6) {
+    var country = range.getValue();
+    if (country) {
+      showDrillDown(country);
+    }
+  }
+}
+
+/**
+ * Generates a detailed sheet for the selected country.
+ */
+function showDrillDown(country) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var dataSheet = ss.getSheetByName("OHL - Workload Report LATAM");
+  if (!dataSheet) dataSheet = ss.getSheets()[0];
+  
+  var data = dataSheet.getDataRange().getValues();
+  var headers = data[0];
+  
+  var countryIdx = headers.indexOf("Account: Billing Country");
+  var revenueIdx = headers.indexOf("Workload Gross Annual Recurring Revenue (converted)");
+  var partnerIdx = headers.indexOf("Partner");
+  var geIdx = headers.indexOf("Aparently is GE");
+  if (geIdx === -1) geIdx = headers.indexOf("Aparently is");
+  var workloadIdx = headers.indexOf("Workload: Workload Name");
+  
+  if (countryIdx === -1 || revenueIdx === -1 || partnerIdx === -1 || geIdx === -1 || workloadIdx === -1) {
+    SpreadsheetApp.getUi().alert("Required headers not found in data sheet.");
+    return;
+  }
+  
+  var output = [[
+    "Partner",
+    "Workload Name",
+    "Gross Annual Recurring Revenue"
+  ]];
+  
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var rowCountry = row[countryIdx];
+    var isGE = row[geIdx];
+    
+    if (rowCountry === country && isGE && isGE.toString().trim() !== "") {
+      var partner = row[partnerIdx] || "No Partner";
+      var workload = row[workloadIdx] || "N/A";
+      var revenue = parseRevenue(row[revenueIdx]);
+      
+      output.push([partner, workload, revenue]);
+    }
+  }
+  
+  if (output.length === 1) {
+    SpreadsheetApp.getUi().alert("No workloads found for " + country + " with the current filters.");
+    return;
+  }
+  
+  // Create or get sheet
+  var sheetName = "DrillDown_" + country;
+  var drillSheet = ss.getSheetByName(sheetName);
+  if (!drillSheet) {
+    drillSheet = ss.insertSheet(sheetName);
+  } else {
+    drillSheet.clear();
+  }
+  
+  // Write data
+  drillSheet.getRange(1, 1, output.length, output[0].length).setValues(output);
+  
+  // Formatting
+  var headerRange = drillSheet.getRange(1, 1, 1, output[0].length);
+  headerRange.setBackground("#34a853") // Google Green for drill down
+             .setFontColor("#ffffff")
+             .setFontWeight("bold")
+             .setHorizontalAlignment("center");
+             
+  drillSheet.getRange(2, 3, output.length - 1, 1)
+            .setNumberFormat("$#,##0")
+            .setHorizontalAlignment("right");
+            
+  drillSheet.autoResizeColumns(1, output[0].length);
+  
+  // Switch to the new sheet
+  ss.setActiveSheet(drillSheet);
+}
