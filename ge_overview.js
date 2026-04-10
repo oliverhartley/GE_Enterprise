@@ -361,3 +361,28 @@ function goBackToOverview(drillSheet) {
     drillSheet.hideSheet();
   }
 }
+
+/**
+ * Automatically triggers when the spreadsheet is opened.
+ * Hides all drill-down sheets to keep the workspace clean.
+ */
+function onOpen() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheets = ss.getSheets();
+  
+  for (var i = 0; i < sheets.length; i++) {
+    var sheet = sheets[i];
+    var name = sheet.getName();
+    
+    // Hide any sheet that starts with "DrillDown_"
+    if (name.indexOf("DrillDown_") === 0) {
+      sheet.hideSheet();
+    }
+  }
+  
+  // Make sure GE_Overview is the active sheet on open
+  var overview = ss.getSheetByName("GE_Overview");
+  if (overview) {
+    ss.setActiveSheet(overview);
+  }
+}
