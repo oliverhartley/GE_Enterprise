@@ -259,9 +259,15 @@ function onEdit(e) {
   }
   
   if (sheetName.indexOf("DrillDown_") === 0) {
+    // Back button in A1
     if (range.getColumn() === 1 && range.getRow() === 1 && val === true) {
       goBackToOverview(sheet);
       range.setValue(false); // Reset checkbox
+    }
+    
+    // Dropdown in D1
+    if (range.getColumn() === 4 && range.getRow() === 1) {
+      applyDrillDownGrouping(sheet, val);
     }
   }
 }
@@ -326,18 +332,6 @@ function showDrillDown(country) {
     return;
   }
   
-  rows.sort(function(a, b) {
-    var nameA = a[0].toString();
-    var nameB = b[0].toString();
-    if (nameA === "No Partner" && nameB !== "No Partner") return 1;
-    if (nameA !== "No Partner" && nameB === "No Partner") return -1;
-    var lowerA = nameA.toLowerCase();
-    var lowerB = nameB.toLowerCase();
-    if (lowerA < lowerB) return -1;
-    if (lowerA > lowerB) return 1;
-    return 0;
-  });
-  
   var output = [[
     "Partner",
     "Account Name",
@@ -361,10 +355,25 @@ function showDrillDown(country) {
     drillSheet.clear();
   }
   
+  // Set Back button (Checkbox in A1, Text in B1)
   drillSheet.getRange(1, 1).insertCheckboxes();
   drillSheet.getRange(1, 2).setValue("<- Check box to go back to GE_Overview")
              .setFontColor("#1a73e8")
              .setFontWeight("bold");
+  
+  // Set Dropdown in C1 and D1
+  drillSheet.getRange(1, 3).setValue("Group By:")
+             .setFontWeight("bold")
+             .setHorizontalAlignment("right");
+             
+  var rule = SpreadsheetApp.newDataValidation().requireValueInList([
+    "Partner", "Account Name", "Workload Name", "Workload Progress", "Account Owner", "Primary CE Owner"
+  ]).build();
+  
+  drillSheet.getRange(1, 4).setDataValidation(rule)
+             .setValue("Partner")
+             .setFontWeight("bold")
+             .setHorizontalAlignment("left");
   
   var startRow = 3;
   drillSheet.getRange(startRow, 1, output.length, output[0].length).setValues(output);
@@ -385,16 +394,67 @@ function showDrillDown(country) {
   
   drillSheet.getRange(startRow, 1, output.length, output[0].length).setWrap(true);
   
-  for (var i = startRow + 1; i < startRow + output.length; i++) {
-    if ((i - startRow) % 2 === 0) {
-      drillSheet.getRange(i, 1, 1, output[0].length).setBackground("#e0e0e0");
-    } else {
-      drillSheet.getRange(i, 1, 1, output[0].length).setBackground("#ffffff");
-    }
-  }
+  // Apply initial grouping/colors by Partner
+  applyDrillDownGrouping(drillSheet, "Partner");
   
   drillSheet.getRange(startRow, 1, output.length, output[0].length).createFilter();
   ss.setActiveSheet(drillSheet);
+}
+
+/**
+ * Sorts data and applies grouped zebra striping based on the selected column.
+ */
+function applyDrillDownGrouping(sheet, groupBy) {
+  var headers = sheet.getRange(3, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var colIdx = headers.indexOf(groupBy);
+  
+  if (colIdx === -1) return;
+  
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 3) return; // No data
+  
+  var dataRange = sheet.getRange(4, 1, lastRow - 3, sheet.getLastColumn());
+  var values = dataRange.getValues();
+  
+  // Sort values
+  values.sort(function(a, b) {
+    var valA = a[colIdx].toString();
+    var valB = b[colIdx].toString();
+    
+    if (groupBy === "Partner") {
+      if (valA === "No Partner" && valB !== "No Partner") return 1;
+      if (valA !== "No Partner" && valB === "No Partner") return -1;
+    }
+    
+    var lowerA = valA.toLowerCase();
+    var lowerB = valB.toLowerCase();
+    if (lowerA < lowerB) return -1;
+    if (lowerA > lowerB) return 1;
+    return 0;
+  });
+  
+  // Write back
+  dataRange.setValues(values);
+  
+  // Apply colors efficiently with setBackgrounds
+  var colors = [];
+  var isGrey = false;
+  var lastVal = null;
+  
+  for (var i = 0; i < values.length; i++) {
+    var currentVal = values[i][colIdx];
+    if (currentVal !== lastVal) {
+      isGrey = !isGrey;
+      lastVal = currentVal;
+    }
+    var rowColors = [];
+    for (var j = 0; j < headers.length; j++) {
+      rowColors.push(isGrey ? "#e0e0e0" : "#ffffff");
+    }
+    colors.push(rowColors);
+  }
+  
+  dataRange.setBackgrounds(colors);
 }
 
 function goBackToOverview(drillSheet) {
