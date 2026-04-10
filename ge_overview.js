@@ -14,9 +14,9 @@ function createOverview() {
     return;
   }
   
-  // List of South American countries
+  // List of South American countries (including both Brazil and Brasil to be safe)
   var southAmericanCountries = [
-    "Argentina", "Bolivia", "Brazil", "Chile", "Colombia", "Ecuador", 
+    "Argentina", "Bolivia", "Brazil", "Brasil", "Chile", "Colombia", "Ecuador", 
     "Guyana", "Paraguay", "Peru", "Suriname", "Uruguay", "Venezuela"
   ];
   
