@@ -369,10 +369,33 @@ function showDrillDown(country) {
 }
 
 /**
+ * Goes back to Overview and hides the drill down sheet.
+ */
+function goBackToOverview(drillSheet) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var overviewSheet = ss.getSheetByName("GE_Overview");
+  if (overviewSheet) {
+    ss.setActiveSheet(overviewSheet);
+    drillSheet.hideSheet();
+  }
+}
+
+/**
  * Automatically triggers when the spreadsheet is opened.
- * Hides all drill-down sheets to keep the workspace clean.
+ * Makes sure GE_Overview is the active sheet.
  */
 function onOpen() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var overview = ss.getSheetByName("GE_Overview");
+  if (overview) {
+    ss.setActiveSheet(overview);
+  }
+}
+
+/**
+ * Function to be called by a time-driven trigger to hide drill-down sheets.
+ */
+function hideDrillDownSheets() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheets = ss.getSheets();
   
@@ -385,10 +408,27 @@ function onOpen() {
       sheet.hideSheet();
     }
   }
-  
-  // Make sure GE_Overview is the active sheet on open
-  var overview = ss.getSheetByName("GE_Overview");
-  if (overview) {
-    ss.setActiveSheet(overview);
+}
+
+/**
+ * Helper function to create the daily trigger at 1 AM.
+ * Run this function ONCE from the editor to set it up.
+ */
+function createDailyTrigger() {
+  // Delete existing triggers for this function to avoid duplicates
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'hideDrillDownSheets') {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
   }
+  
+  // Create new trigger for 1 AM daily
+  ScriptApp.newTrigger('hideDrillDownSheets')
+      .timeBased()
+      .everyDays(1)
+      .atHour(1)
+      .create();
+      
+  Logger.log("Trigger created for hideDrillDownSheets at 1 AM daily.");
 }
