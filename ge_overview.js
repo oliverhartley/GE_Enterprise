@@ -334,20 +334,13 @@ function showDrillDown(country) {
   // Enable Wrap for all data and headers
   drillSheet.getRange(startRow, 1, output.length, output[0].length).setWrap(true);
   
-  // ---- Grouped Zebra Striping ----
-  var currentPartner = "";
-  var useGrey = false;
-  
-  for (var i = 0; i < rows.length; i++) {
-    var partner = rows[i][0];
-    if (partner !== currentPartner) {
-      useGrey = !useGrey;
-      currentPartner = partner;
+  // Alternating Rows (Zebra Striping) - Switched to standard row-by-row as requested
+  for (var i = startRow + 1; i < startRow + output.length; i++) {
+    if ((i - startRow) % 2 === 0) {
+      drillSheet.getRange(i, 1, 1, output[0].length).setBackground("#f2f2f2");
+    } else {
+      drillSheet.getRange(i, 1, 1, output[0].length).setBackground("#ffffff");
     }
-    
-    var rowIdx = startRow + 1 + i;
-    var color = useGrey ? "#f2f2f2" : "#ffffff";
-    drillSheet.getRange(rowIdx, 1, 1, output[0].length).setBackground(color);
   }
   
   // Add Filter in Row 3
