@@ -1,7 +1,12 @@
+var ALLOWED_COUNTRIES = [
+  "Argentina", "Bolivia", "Brazil", "Brasil", "Chile", "Colombia", "Ecuador", 
+  "Guyana", "Mexico", "Paraguay", "Peru", "Suriname", "Uruguay", "Venezuela"
+];
+
 function createOverview() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   
-  // Updated sheet name to "Gemini Workload DB"
+  // Target the specific sheet by name
   var dataSheet = ss.getSheetByName("Gemini Workload DB");
   if (!dataSheet) {
     dataSheet = ss.getSheets()[0]; // Fallback to first sheet if name not found
@@ -14,25 +19,16 @@ function createOverview() {
   var countryIdx = headers.indexOf("Account: Billing Country");
   var revenueIdx = headers.indexOf("Workload Gross Annual Recurring Revenue (converted)");
   var partnerIdx = headers.indexOf("Partner");
-  
-  // Try to find the 'Aparently is GE' column, or fallback to 'Aparently is'
   var geIdx = headers.indexOf("Aparently is GE");
-  if (geIdx === -1) {
-    geIdx = headers.indexOf("Aparently is");
-  }
+  if (geIdx === -1) geIdx = headers.indexOf("Aparently is");
   
   if (countryIdx === -1 || revenueIdx === -1 || partnerIdx === -1 || geIdx === -1) {
-    Logger.log("Required headers not found. Found headers: " + JSON.stringify(headers));
+    Logger.log("Required headers not found.");
     return;
   }
   
-  // List of allowed countries (South America + Mexico)
-  var allowedCountries = [
-    "Argentina", "Bolivia", "Brazil", "Brasil", "Chile", "Colombia", "Ecuador", 
-    "Guyana", "Mexico", "Paraguay", "Peru", "Suriname", "Uruguay", "Venezuela"
-  ];
-  
   var summary = {};
+  var mcoSummary = createEmptySummary();
   
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
@@ -47,36 +43,30 @@ function createOverview() {
     if (!isGE || isGE.toString().trim() === "") continue;
     
     // Filter 2: Only count allowed countries
-    if (allowedCountries.indexOf(country) === -1) continue;
+    if (ALLOWED_COUNTRIES.indexOf(country) === -1) continue;
     
     var revenue = parseRevenue(revenueStr);
     
-    if (!summary[country]) {
-      summary[country] = {
-        count: 0,
-        partners: {},
-        totalRevWithPartner: 0,
-        countWithPartner: 0,
-        totalRevNoPartner: 0,
-        countNoPartner: 0
-      };
-    }
+    // Map Brasil to Brazil for grouping
+    var mappedCountry = country;
+    if (country === "Brasil") mappedCountry = "Brazil";
     
-    summary[country].count++;
+    if (!summary[mappedCountry]) {
+      summary[mappedCountry] = createEmptySummary();
+    }
     
     var isNoPartner = !partner || partner.toString().trim() === "" || partner.toString().trim() === "No Partner";
     
-    if (!isNoPartner) {
-      summary[country].partners[partner] = true;
-      summary[country].totalRevWithPartner += revenue;
-      summary[country].countWithPartner++;
-    } else {
-      summary[country].totalRevNoPartner += revenue;
-      summary[country].countNoPartner++;
+    // Update individual country summary
+    updateSummary(summary[mappedCountry], revenue, isNoPartner, partner);
+    
+    // Update MCO summary if not Brazil or Mexico
+    if (mappedCountry !== "Brazil" && mappedCountry !== "Mexico") {
+      updateSummary(mcoSummary, revenue, isNoPartner, partner);
     }
   }
   
-  // Prepare output data with more readable headers
+  // Prepare output data
   var output = [[
     "Drill Down",
     "Country",
@@ -88,27 +78,25 @@ function createOverview() {
     "Avg Revenue (No Partner)"
   ]];
   
-  // SORT BY COUNTRY
-  var sortedCountries = Object.keys(summary).sort();
+  // 1. Brazil
+  var br = summary["Brazil"] || createEmptySummary();
+  output.push(buildOutputRow("Brazil", br));
   
-  for (var i = 0; i < sortedCountries.length; i++) {
-    var country = sortedCountries[i];
-    var s = summary[country];
-    var partnerCount = Object.keys(s.partners).length;
-    
-    var avgWithPartner = s.countWithPartner > 0 ? s.totalRevWithPartner / s.countWithPartner : 0;
-    var avgNoPartner = s.countNoPartner > 0 ? s.totalRevNoPartner / s.countNoPartner : 0;
-    
-    output.push([
-      false, // Checkbox placeholder
-      country,
-      s.count, // Total workloads
-      partnerCount,
-      s.totalRevWithPartner,
-      avgWithPartner,
-      s.totalRevNoPartner,
-      avgNoPartner
-    ]);
+  // 2. Mexico
+  var mx = summary["Mexico"] || createEmptySummary();
+  output.push(buildOutputRow("Mexico", mx));
+  
+  // 3. MCO
+  output.push(buildOutputRow("MCO", mcoSummary));
+  
+  // 4. Individual MCO countries (sorted)
+  var mcoCountries = Object.keys(summary).filter(function(c) {
+    return c !== "Brazil" && c !== "Mexico";
+  }).sort();
+  
+  for (var i = 0; i < mcoCountries.length; i++) {
+    var c = mcoCountries[i];
+    output.push(buildOutputRow(c, summary[c]));
   }
   
   // Create or get sheet
@@ -133,7 +121,7 @@ function createOverview() {
             .setFontWeight("bold")
             .setHorizontalAlignment("center")
             .setVerticalAlignment("middle")
-            .setFontColor("#1a73e8"); // Google Blue
+            .setFontColor("#1a73e8");
   overviewSheet.setRowHeight(1, 40);
   
   // 2. Insert Checkboxes in Column A
@@ -141,35 +129,25 @@ function createOverview() {
   
   // 3. Header Formatting (Row 5)
   var headerRange = overviewSheet.getRange(startRow, 1, 1, output[0].length);
-  headerRange.setBackground("#1a73e8") // Google Blue
+  headerRange.setBackground("#1a73e8")
              .setFontColor("#ffffff")
              .setFontWeight("bold")
              .setHorizontalAlignment("center")
              .setVerticalAlignment("middle");
   overviewSheet.setRowHeight(startRow, 30);
   
-  // 4. Data Formatting (Rows 6 and below)
+  // 4. Data Formatting
   var dataRange = overviewSheet.getRange(startRow + 1, 1, output.length - 1, output[0].length);
   dataRange.setFontSize(10)
            .setVerticalAlignment("middle");
   
   // 5. Column Specific Formatting
-  // Column A: Checkbox
   overviewSheet.getRange(startRow + 1, 1, output.length - 1, 1).setHorizontalAlignment("center");
-  // Column B: Country
   overviewSheet.getRange(startRow + 1, 2, output.length - 1, 1).setHorizontalAlignment("left");
+  overviewSheet.getRange(startRow + 1, 3, output.length - 1, 2).setNumberFormat("0").setHorizontalAlignment("center");
+  overviewSheet.getRange(startRow + 1, 5, output.length - 1, 4).setNumberFormat("$#,##0").setHorizontalAlignment("right");
   
-  // Column C & D: Counts (Forcing normal number format with "0")
-  overviewSheet.getRange(startRow + 1, 3, output.length - 1, 2)
-               .setNumberFormat("0")
-               .setHorizontalAlignment("center");
-               
-  // Columns E, F, G, H: Currency (4 columns starting at Col 5)
-  overviewSheet.getRange(startRow + 1, 5, output.length - 1, 4)
-               .setNumberFormat("$#,##0")
-               .setHorizontalAlignment("right");
-  
-  // 6. Alternating Rows (Zebra Striping) - Darker grey for better contrast
+  // 6. Alternating Rows (Zebra Striping)
   for (var i = startRow + 1; i < startRow + output.length; i++) {
     if ((i - startRow) % 2 === 0) {
       overviewSheet.getRange(i, 1, 1, output[0].length).setBackground("#e0e0e0");
@@ -177,6 +155,10 @@ function createOverview() {
       overviewSheet.getRange(i, 1, 1, output[0].length).setBackground("#ffffff");
     }
   }
+  
+  // Highlight MCO row for visual separation
+  var mcoRowIdx = startRow + 3; // Brazil is 1, Mexico is 2, MCO is 3
+  overviewSheet.getRange(mcoRowIdx, 1, 1, output[0].length).setFontWeight("bold").setBackground("#d1e7dd"); // Light green
   
   // 7. Borders
   overviewSheet.getRange(startRow, 1, output.length, output[0].length)
@@ -191,10 +173,49 @@ function createOverview() {
   }
 }
 
+function createEmptySummary() {
+  return {
+    count: 0,
+    partners: {},
+    totalRevWithPartner: 0,
+    countWithPartner: 0,
+    totalRevNoPartner: 0,
+    countNoPartner: 0
+  };
+}
+
+function updateSummary(obj, revenue, isNoPartner, partner) {
+  obj.count++;
+  if (isNoPartner) {
+    obj.totalRevNoPartner += revenue;
+    obj.countNoPartner++;
+  } else {
+    obj.partners[partner] = true;
+    obj.totalRevWithPartner += revenue;
+    obj.countWithPartner++;
+  }
+}
+
+function buildOutputRow(name, s) {
+  var partnerCount = Object.keys(s.partners).length;
+  var avgWithPartner = s.countWithPartner > 0 ? s.totalRevWithPartner / s.countWithPartner : 0;
+  var avgNoPartner = s.countNoPartner > 0 ? s.totalRevNoPartner / s.countNoPartner : 0;
+  
+  return [
+    false, // Checkbox
+    name,
+    s.count,
+    partnerCount,
+    s.totalRevWithPartner,
+    avgWithPartner,
+    s.totalRevNoPartner,
+    avgNoPartner
+  ];
+}
+
 function parseRevenue(str) {
   if (!str) return 0;
   if (typeof str === 'number') return str;
-  // Remove "USD ", commas, and spaces
   var cleanStr = str.toString().replace("USD ", "").replace(/,/g, "").trim();
   var val = parseFloat(cleanStr);
   return isNaN(val) ? 0 : val;
@@ -202,41 +223,32 @@ function parseRevenue(str) {
 
 // ---- Checkbox Navigation Feature ----
 
-/**
- * Automatically triggers when a cell is edited.
- */
 function onEdit(e) {
   var range = e.range;
   var sheet = range.getSheet();
   var sheetName = sheet.getName();
   var val = range.getValue();
   
-  // Case 1: In GE_Overview, checking the drill down box in Column A
   if (sheetName === "GE_Overview") {
     if (range.getColumn() === 1 && range.getRow() >= 6 && val === true) {
-      var country = sheet.getRange(range.getRow(), 2).getValue(); // Country is in Col 2
+      var country = sheet.getRange(range.getRow(), 2).getValue();
       if (country) {
         showDrillDown(country);
       }
-      range.setValue(false); // Reset checkbox to unchecked
+      range.setValue(false); // Reset checkbox
     }
   }
   
-  // Case 2: In a DrillDown sheet, checking the back box in Cell A1
   if (sheetName.indexOf("DrillDown_") === 0) {
     if (range.getColumn() === 1 && range.getRow() === 1 && val === true) {
       goBackToOverview(sheet);
-      range.setValue(false); // Reset checkbox to unchecked
+      range.setValue(false); // Reset checkbox
     }
   }
 }
 
-/**
- * Generates a detailed sheet for the selected country.
- */
 function showDrillDown(country) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  // Updated sheet name to "Gemini Workload DB"
   var dataSheet = ss.getSheetByName("Gemini Workload DB");
   if (!dataSheet) dataSheet = ss.getSheets()[0];
   
@@ -250,14 +262,13 @@ function showDrillDown(country) {
   if (geIdx === -1) geIdx = headers.indexOf("Aparently is");
   var workloadIdx = headers.indexOf("Workload: Workload Name");
   
-  // New Requested Indices
   var progressIdx = headers.indexOf("Workload Progress");
   var accNameIdx = headers.indexOf("Account: Account Name");
   var accOwnerIdx = headers.indexOf("Account: Account Owner");
   var ceOwnerIdx = headers.indexOf("Primary CE Technical Owner");
   
   if (countryIdx === -1 || revenueIdx === -1 || partnerIdx === -1 || geIdx === -1 || workloadIdx === -1) {
-    SpreadsheetApp.getUi().alert("Required headers not found in data sheet.");
+    SpreadsheetApp.getUi().alert("Required headers not found.");
     return;
   }
   
@@ -268,35 +279,41 @@ function showDrillDown(country) {
     var rowCountry = row[countryIdx];
     var isGE = row[geIdx];
     
-    if (rowCountry === country && isGE && isGE.toString().trim() !== "") {
+    var isAllowed = ALLOWED_COUNTRIES.indexOf(rowCountry) !== -1;
+    var match = false;
+    
+    if (country === "MCO") {
+      // MCO matches all allowed countries except Brazil, Brasil, and Mexico
+      match = isAllowed && rowCountry !== "Brazil" && rowCountry !== "Brasil" && rowCountry !== "Mexico";
+    } else {
+      // Specific country match (handling Brasil fallback for Brazil)
+      match = (rowCountry === country || (country === "Brazil" && rowCountry === "Brasil"));
+    }
+    
+    if (match && isGE && isGE.toString().trim() !== "") {
       var partner = row[partnerIdx] || "No Partner";
       var workload = row[workloadIdx] || "N/A";
       var revenue = parseRevenue(row[revenueIdx]);
       
-      // Fallbacks for new fields
       var progress = progressIdx !== -1 ? row[progressIdx] : "N/A";
       var accName = accNameIdx !== -1 ? row[accNameIdx] : "N/A";
       var accOwner = accOwnerIdx !== -1 ? row[accOwnerIdx] : "N/A";
       var ceOwner = ceOwnerIdx !== -1 ? row[ceOwnerIdx] : "N/A";
       
-      // NEW ORDER: Partner, Account Name, Workload Name, Workload Progress, Annual Revenue, Account Owner, Primary CE Owner
       rows.push([partner, accName, workload, progress, revenue, accOwner, ceOwner]);
     }
   }
   
   if (rows.length === 0) {
-    SpreadsheetApp.getUi().alert("No workloads found for " + country + " with the current filters.");
+    SpreadsheetApp.getUi().alert("No workloads found for " + country);
     return;
   }
   
-  // SORT BY PARTNER NAME (Column 1 in output), putting "No Partner" at the end
   rows.sort(function(a, b) {
     var nameA = a[0].toString();
     var nameB = b[0].toString();
-    
     if (nameA === "No Partner" && nameB !== "No Partner") return 1;
     if (nameA !== "No Partner" && nameB === "No Partner") return -1;
-    
     var lowerA = nameA.toLowerCase();
     var lowerB = nameB.toLowerCase();
     if (lowerA < lowerB) return -1;
@@ -304,7 +321,6 @@ function showDrillDown(country) {
     return 0;
   });
   
-  // Headers in requested order
   var output = [[
     "Partner",
     "Account Name",
@@ -317,54 +333,41 @@ function showDrillDown(country) {
   
   output = output.concat(rows);
   
-  // Create or get sheet
   var sheetName = "DrillDown_" + country;
   var drillSheet = ss.getSheetByName(sheetName);
   if (!drillSheet) {
     drillSheet = ss.insertSheet(sheetName);
   } else {
-    drillSheet.showSheet(); // Unhide if hidden
-    
-    // Remove existing filter if any to prevent errors
+    drillSheet.showSheet();
     var existingFilter = drillSheet.getFilter();
-    if (existingFilter) {
-      existingFilter.remove();
-    }
-    
+    if (existingFilter) existingFilter.remove();
     drillSheet.clear();
   }
   
-  // Set Back button (Checkbox in A1, Text in B1)
   drillSheet.getRange(1, 1).insertCheckboxes();
   drillSheet.getRange(1, 2).setValue("<- Check box to go back to GE_Overview")
              .setFontColor("#1a73e8")
              .setFontWeight("bold");
   
-  // Write data starting at Row 3
   var startRow = 3;
   drillSheet.getRange(startRow, 1, output.length, output[0].length).setValues(output);
   
-  // Formatting
   var headerRange = drillSheet.getRange(startRow, 1, 1, output[0].length);
-  headerRange.setBackground("#34a853") // Google Green for drill down
+  headerRange.setBackground("#34a853")
              .setFontColor("#ffffff")
              .setFontWeight("bold")
              .setHorizontalAlignment("center");
              
-  // Currency format for the 5th column (Annual Revenue)
   drillSheet.getRange(startRow + 1, 5, output.length - 1, 1)
             .setNumberFormat("$#,##0")
             .setHorizontalAlignment("right");
             
-  // Set Column Width to 200 for all columns
   for (var col = 1; col <= output[0].length; col++) {
     drillSheet.setColumnWidth(col, 200);
   }
   
-  // Enable Wrap for all data and headers
   drillSheet.getRange(startRow, 1, output.length, output[0].length).setWrap(true);
   
-  // Alternating Rows (Zebra Striping) - Darker grey for better contrast
   for (var i = startRow + 1; i < startRow + output.length; i++) {
     if ((i - startRow) % 2 === 0) {
       drillSheet.getRange(i, 1, 1, output[0].length).setBackground("#e0e0e0");
@@ -373,17 +376,19 @@ function showDrillDown(country) {
     }
   }
   
-  // Add Filter in Row 3
   drillSheet.getRange(startRow, 1, output.length, output[0].length).createFilter();
-  
-  // Switch to the new sheet
   ss.setActiveSheet(drillSheet);
 }
 
-/**
- * Automatically triggers when the spreadsheet is opened.
- * Makes sure GE_Overview is the active sheet.
- */
+function goBackToOverview(drillSheet) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var overviewSheet = ss.getSheetByName("GE_Overview");
+  if (overviewSheet) {
+    ss.setActiveSheet(overviewSheet);
+    drillSheet.hideSheet();
+  }
+}
+
 function onOpen() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var overview = ss.getSheetByName("GE_Overview");
@@ -392,9 +397,6 @@ function onOpen() {
   }
 }
 
-/**
- * Function to be called by a time-driven trigger to hide drill-down sheets.
- */
 function hideDrillDownSheets() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheets = ss.getSheets();
@@ -403,19 +405,13 @@ function hideDrillDownSheets() {
     var sheet = sheets[i];
     var name = sheet.getName();
     
-    // Hide any sheet that starts with "DrillDown_"
     if (name.indexOf("DrillDown_") === 0) {
       sheet.hideSheet();
     }
   }
 }
 
-/**
- * Helper function to create the daily trigger at 1 AM.
- * Run this function ONCE from the editor to set it up.
- */
 function createDailyTrigger() {
-  // Delete existing triggers for this function to avoid duplicates
   var triggers = ScriptApp.getProjectTriggers();
   for (var i = 0; i < triggers.length; i++) {
     if (triggers[i].getHandlerFunction() === 'hideDrillDownSheets') {
@@ -423,7 +419,6 @@ function createDailyTrigger() {
     }
   }
   
-  // Create new trigger for 1 AM daily
   ScriptApp.newTrigger('hideDrillDownSheets')
       .timeBased()
       .everyDays(1)
