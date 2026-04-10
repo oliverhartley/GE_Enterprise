@@ -356,27 +356,34 @@ function showDrillDown(country) {
   var dataRange = drillSheet.getRange(1, 1, output.length, output[0].length);
   dataRange.setValues(output);
   
-  // Try to use native Tables feature (using createTable)
+  // Try to use native Tables feature via Sheets API v4
   var tableCreated = false;
   try {
-    var table = drillSheet.createTable(dataRange, true);
+    var sheetId = drillSheet.getSheetId();
+    var resource = {
+      requests: [
+        {
+          addTable: {
+            table: {
+              name: "Table_" + country.replace(/[^a-zA-Z0-9]/g, "_"),
+              range: {
+                sheetId: sheetId,
+                startRowIndex: 0,
+                endRowIndex: output.length,
+                startColumnIndex: 0,
+                endColumnIndex: output[0].length
+              }
+            }
+          }
+        }
+      ]
+    };
     
-    // Set name to match the sheet (sanitized)
-    table.setName("Table_" + country.replace(/[^a-zA-Z0-9]/g, "_"));
-    
-    // Apply theme safely
-    var theme = getThemeForCountry(country);
-    if (theme) {
-      table.setTableTheme(theme);
-    }
-    
-    table.setHasStickyHeader(true);
-    table.setHasStripedRows(true);
+    Sheets.Spreadsheets.batchUpdate(resource, ss.getId());
     tableCreated = true;
-    Logger.log("Native table created for " + country);
+    Logger.log("Native table created via Sheets API for " + country);
   } catch (e) {
-    // Removed UI Alert to avoid annoying the user, just log it
-    Logger.log("Failed to create native table, falling back to simulation: " + e.message);
+    Logger.log("Sheets API failed to create table, falling back to simulation: " + e.message);
   }
   
   // Fallback to simulation if native table failed
@@ -416,32 +423,6 @@ function showDrillDown(country) {
   ss.setActiveSheet(drillSheet);
 }
 
-/**
- * Gets a consistent TableTheme based on country name.
- */
-function getThemeForCountry(country) {
-  if (!SpreadsheetApp.TableTheme) return null;
-  
-  var themes = [
-    SpreadsheetApp.TableTheme.LIGHT_GREEN,
-    SpreadsheetApp.TableTheme.LIGHT_BLUE,
-    SpreadsheetApp.TableTheme.LIGHT_GREY,
-    SpreadsheetApp.TableTheme.TEAL,
-    SpreadsheetApp.TableTheme.ORANGE,
-    SpreadsheetApp.TableTheme.YELLOW
-  ];
-  
-  var hash = 0;
-  for (var i = 0; i < country.length; i++) {
-    hash = country.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  var index = Math.abs(hash) % themes.length;
-  return themes[index];
-}
-
-/**
- * Fallback color generator for simulation.
- */
 function getColorForCountry(country) {
   var colors = [
     "#34a853", // Green
