@@ -344,15 +344,12 @@ function showDrillDown(country) {
     drillSheet = ss.insertSheet(sheetName);
   } else {
     drillSheet.showSheet();
-    
-    // Still remove existing filter if any to clean up
     var existingFilter = drillSheet.getFilter();
     if (existingFilter) existingFilter.remove();
-    
     drillSheet.clear();
   }
   
-  // Set Dropdown in C1 and D1 (Label in C1, Dropdown in D1)
+  // Set Dropdown in C1 and D1
   drillSheet.getRange(1, 3).setValue("Group By:")
              .setFontWeight("bold")
              .setHorizontalAlignment("right");
@@ -385,12 +382,46 @@ function showDrillDown(country) {
   
   drillSheet.getRange(startRow, 1, output.length, output[0].length).setWrap(true);
   
-  // Apply initial grouping/colors by Partner
+  // Apply initial grouping/sorting by Partner (will clear backgrounds)
   applyDrillDownGrouping(drillSheet, "Partner");
   
-  // Removed createFilter() from here
-  
   ss.setActiveSheet(drillSheet);
+}
+
+function applyDrillDownGrouping(sheet, groupBy) {
+  var headers = sheet.getRange(3, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var colIdx = headers.indexOf(groupBy);
+  
+  if (colIdx === -1) return;
+  
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 3) return; // No data
+  
+  var dataRange = sheet.getRange(4, 1, lastRow - 3, sheet.getLastColumn());
+  var values = dataRange.getValues();
+  
+  // Sort values
+  values.sort(function(a, b) {
+    var valA = a[colIdx].toString();
+    var valB = b[colIdx].toString();
+    
+    if (groupBy === "Partner") {
+      if (valA === "No Partner" && valB !== "No Partner") return 1;
+      if (valA !== "No Partner" && valB === "No Partner") return -1;
+    }
+    
+    var lowerA = valA.toLowerCase();
+    var lowerB = valB.toLowerCase();
+    if (lowerA < lowerB) return -1;
+    if (lowerA > lowerB) return 1;
+    return 0;
+  });
+  
+  // Write back
+  dataRange.setValues(values);
+  
+  // Remove all backgrounds for data rows as requested
+  dataRange.setBackground(null);
 }
 
 function onOpen() {
@@ -430,57 +461,4 @@ function createDailyTrigger() {
       .create();
       
   Logger.log("Trigger created for hideDrillDownSheets at 1 AM daily.");
-}
-
-function applyDrillDownGrouping(sheet, groupBy) {
-  var headers = sheet.getRange(3, 1, 1, sheet.getLastColumn()).getValues()[0];
-  var colIdx = headers.indexOf(groupBy);
-  
-  if (colIdx === -1) return;
-  
-  var lastRow = sheet.getLastRow();
-  if (lastRow <= 3) return; // No data
-  
-  var dataRange = sheet.getRange(4, 1, lastRow - 3, sheet.getLastColumn());
-  var values = dataRange.getValues();
-  
-  // Sort values
-  values.sort(function(a, b) {
-    var valA = a[colIdx].toString();
-    var valB = b[colIdx].toString();
-    
-    if (groupBy === "Partner") {
-      if (valA === "No Partner" && valB !== "No Partner") return 1;
-      if (valA !== "No Partner" && valB === "No Partner") return -1;
-    }
-    
-    var lowerA = valA.toLowerCase();
-    var lowerB = valB.toLowerCase();
-    if (lowerA < lowerB) return -1;
-    if (lowerA > lowerB) return 1;
-    return 0;
-  });
-  
-  // Write back
-  dataRange.setValues(values);
-  
-  // Apply colors efficiently
-  var colors = [];
-  var isGrey = false;
-  var lastVal = null;
-  
-  for (var i = 0; i < values.length; i++) {
-    var currentVal = values[i][colIdx];
-    if (currentVal !== lastVal) {
-      isGrey = !isGrey;
-      lastVal = currentVal;
-    }
-    var rowColors = [];
-    for (var j = 0; j < headers.length; j++) {
-      rowColors.push(isGrey ? "#e0e0e0" : "#ffffff");
-    }
-    colors.push(rowColors);
-  }
-  
-  dataRange.setBackgrounds(colors);
 }
