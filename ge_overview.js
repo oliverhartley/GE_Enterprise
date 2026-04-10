@@ -86,6 +86,9 @@ function createOverview() {
   var mx = summary["Mexico"] || createEmptySummary();
   output.push(buildOutputRow("Mexico", mx));
   
+  // Spacer Row between Mexico and MCO
+  output.push(["", "", "", "", "", "", "", ""]);
+  
   // 3. MCO
   output.push(buildOutputRow("MCO", mcoSummary));
   
@@ -127,6 +130,9 @@ function createOverview() {
   // 2. Insert Checkboxes in Column A
   overviewSheet.getRange(startRow + 1, 1, output.length - 1, 1).insertCheckboxes();
   
+  // Remove checkbox from spacer row (Row 8)
+  overviewSheet.getRange(startRow + 3, 1).clearDataValidations().setValue("");
+  
   // 3. Header Formatting (Row 5)
   var headerRange = overviewSheet.getRange(startRow, 1, 1, output[0].length);
   headerRange.setBackground("#1a73e8")
@@ -149,6 +155,11 @@ function createOverview() {
   
   // 6. Alternating Rows (Zebra Striping)
   for (var i = startRow + 1; i < startRow + output.length; i++) {
+    if (i === startRow + 3) {
+      // Skip spacer row for striping, make it white
+      overviewSheet.getRange(i, 1, 1, output[0].length).setBackground("#ffffff");
+      continue;
+    }
     if ((i - startRow) % 2 === 0) {
       overviewSheet.getRange(i, 1, 1, output[0].length).setBackground("#e0e0e0");
     } else {
@@ -156,20 +167,28 @@ function createOverview() {
     }
   }
   
+  // Set row heights
+  overviewSheet.setRowHeight(startRow + 3, 10); // Small height for spacer row
+  
   // Highlight MCO row for visual separation
-  var mcoRowIdx = startRow + 3; // Brazil is 1, Mexico is 2, MCO is 3
-  overviewSheet.getRange(mcoRowIdx, 1, 1, output[0].length).setFontWeight("bold").setBackground("#d1e7dd"); // Light green
+  var mcoRowIdx = startRow + 4; // Brazil is 1, Mexico is 2, Spacer is 3, MCO is 4
+  overviewSheet.getRange(mcoRowIdx, 1, 1, output[0].length).setFontWeight("bold").setBackground("#d1e7dd");
   
   // 7. Borders
   overviewSheet.getRange(startRow, 1, output.length, output[0].length)
                .setBorder(true, true, true, true, true, true, "#e0e0e0", SpreadsheetApp.BorderStyle.SOLID);
   
+  // Remove borders for spacer row to make it look like a gap
+  overviewSheet.getRange(startRow + 3, 1, 1, output[0].length).setBorder(false, false, false, false, false, false);
+  
   // 8. Auto-resize columns
   overviewSheet.autoResizeColumns(1, output[0].length);
   
-  // Set row heights for data
+  // Set row heights for data (excluding spacer which is already set)
   for (var i = startRow + 1; i < startRow + output.length; i++) {
-    overviewSheet.setRowHeight(i, 20);
+    if (i !== startRow + 3) {
+      overviewSheet.setRowHeight(i, 20);
+    }
   }
 }
 
@@ -283,10 +302,8 @@ function showDrillDown(country) {
     var match = false;
     
     if (country === "MCO") {
-      // MCO matches all allowed countries except Brazil, Brasil, and Mexico
       match = isAllowed && rowCountry !== "Brazil" && rowCountry !== "Brasil" && rowCountry !== "Mexico";
     } else {
-      // Specific country match (handling Brasil fallback for Brazil)
       match = (rowCountry === country || (country === "Brazil" && rowCountry === "Brasil"));
     }
     
