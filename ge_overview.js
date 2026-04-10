@@ -125,10 +125,21 @@ function createOverview() {
   
   // ---- Formatting ----
   
-  // 1. Insert Checkboxes in Column A
+  // 1. Add Title in Row 1
+  var titleRange = overviewSheet.getRange(1, 1, 1, output[0].length);
+  titleRange.merge();
+  titleRange.setValue("GE LATAM Performance Dashboard")
+            .setFontSize(18)
+            .setFontWeight("bold")
+            .setHorizontalAlignment("center")
+            .setVerticalAlignment("middle")
+            .setFontColor("#1a73e8"); // Google Blue
+  overviewSheet.setRowHeight(1, 40);
+  
+  // 2. Insert Checkboxes in Column A
   overviewSheet.getRange(startRow + 1, 1, output.length - 1, 1).insertCheckboxes();
   
-  // 2. Header Formatting (Row 5)
+  // 3. Header Formatting (Row 5)
   var headerRange = overviewSheet.getRange(startRow, 1, 1, output[0].length);
   headerRange.setBackground("#1a73e8") // Google Blue
              .setFontColor("#ffffff")
@@ -137,12 +148,12 @@ function createOverview() {
              .setVerticalAlignment("middle");
   overviewSheet.setRowHeight(startRow, 30);
   
-  // 3. Data Formatting (Rows 6 and below)
+  // 4. Data Formatting (Rows 6 and below)
   var dataRange = overviewSheet.getRange(startRow + 1, 1, output.length - 1, output[0].length);
   dataRange.setFontSize(10)
            .setVerticalAlignment("middle");
   
-  // 4. Column Specific Formatting
+  // 5. Column Specific Formatting
   // Column A: Checkbox
   overviewSheet.getRange(startRow + 1, 1, output.length - 1, 1).setHorizontalAlignment("center");
   // Column B: Country
@@ -158,7 +169,7 @@ function createOverview() {
                .setNumberFormat("$#,##0")
                .setHorizontalAlignment("right");
   
-  // 5. Alternating Rows (Zebra Striping) - Darker grey for better contrast
+  // 6. Alternating Rows (Zebra Striping) - Darker grey for better contrast
   for (var i = startRow + 1; i < startRow + output.length; i++) {
     if ((i - startRow) % 2 === 0) {
       overviewSheet.getRange(i, 1, 1, output[0].length).setBackground("#e0e0e0");
@@ -167,11 +178,11 @@ function createOverview() {
     }
   }
   
-  // 6. Borders
+  // 7. Borders
   overviewSheet.getRange(startRow, 1, output.length, output[0].length)
                .setBorder(true, true, true, true, true, true, "#e0e0e0", SpreadsheetApp.BorderStyle.SOLID);
   
-  // 7. Auto-resize columns
+  // 8. Auto-resize columns
   overviewSheet.autoResizeColumns(1, output[0].length);
   
   // Set row heights for data
@@ -366,18 +377,6 @@ function showDrillDown(country) {
   
   // Switch to the new sheet
   ss.setActiveSheet(drillSheet);
-}
-
-/**
- * Goes back to Overview and hides the drill down sheet.
- */
-function goBackToOverview(drillSheet) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var overviewSheet = ss.getSheetByName("GE_Overview");
-  if (overviewSheet) {
-    ss.setActiveSheet(overviewSheet);
-    drillSheet.hideSheet();
-  }
 }
 
 /**
