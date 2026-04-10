@@ -1,11 +1,11 @@
 function createOverview() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   
-  // Target the specific sheet by name as requested
-  var dataSheet = ss.getSheetByName("OHL - Workload Report LATAM");
+  // Updated sheet name to "Gemini Workload DB"
+  var dataSheet = ss.getSheetByName("Gemini Workload DB");
   if (!dataSheet) {
     dataSheet = ss.getSheets()[0]; // Fallback to first sheet if name not found
-    Logger.log("Sheet 'OHL - Workload Report LATAM' not found, using first sheet.");
+    Logger.log("Sheet 'Gemini Workload DB' not found, using first sheet.");
   }
   
   var data = dataSheet.getDataRange().getValues();
@@ -236,7 +236,8 @@ function onEdit(e) {
  */
 function showDrillDown(country) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var dataSheet = ss.getSheetByName("OHL - Workload Report LATAM");
+  // Updated sheet name to "Gemini Workload DB"
+  var dataSheet = ss.getSheetByName("Gemini Workload DB");
   if (!dataSheet) dataSheet = ss.getSheets()[0];
   
   var data = dataSheet.getDataRange().getValues();
