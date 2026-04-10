@@ -76,7 +76,11 @@ function createOverview() {
     "Average of the gross recurring"
   ]];
   
-  for (var country in summary) {
+  // SORT BY COUNTRY
+  var sortedCountries = Object.keys(summary).sort();
+  
+  for (var i = 0; i < sortedCountries.length; i++) {
+    var country = sortedCountries[i];
     var s = summary[country];
     var partnerCount = Object.keys(s.partners).length;
     var avg = s.count > 0 ? s.totalRev / s.count : 0;
@@ -167,7 +171,7 @@ function parseRevenue(str) {
 // ---- Checkbox Navigation Feature ----
 
 /**
- * Automatically triggers when a cell is edited.
+ * Automatically triggers when a cell is selected.
  */
 function onEdit(e) {
   var range = e.range;
@@ -218,11 +222,7 @@ function showDrillDown(country) {
     return;
   }
   
-  var output = [[
-    "Partner",
-    "Workload Name",
-    "Gross Annual Recurring Revenue"
-  ]];
+  var rows = [];
   
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
@@ -234,14 +234,31 @@ function showDrillDown(country) {
       var workload = row[workloadIdx] || "N/A";
       var revenue = parseRevenue(row[revenueIdx]);
       
-      output.push([partner, workload, revenue]);
+      rows.push([partner, workload, revenue]);
     }
   }
   
-  if (output.length === 1) {
+  if (rows.length === 0) {
     SpreadsheetApp.getUi().alert("No workloads found for " + country + " with the current filters.");
     return;
   }
+  
+  // SORT BY PARTNER NAME (Column 1 in output)
+  rows.sort(function(a, b) {
+    var nameA = a[0].toString().toLowerCase();
+    var nameB = b[0].toString().toLowerCase();
+    if (nameA < nameB) return -1;
+    if (nameA > nameB) return 1;
+    return 0;
+  });
+  
+  var output = [[
+    "Partner",
+    "Workload Name",
+    "Gross Annual Recurring Revenue"
+  ]];
+  
+  output = output.concat(rows);
   
   // Create or get sheet
   var sheetName = "DrillDown_" + country;
