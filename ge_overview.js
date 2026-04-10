@@ -359,7 +359,6 @@ function showDrillDown(country) {
   // Try to use native Tables feature (using createTable)
   var tableCreated = false;
   try {
-    // REMOVED the typeof check to let it fail if it doesn't exist, so we can catch it!
     var table = drillSheet.createTable(dataRange, true);
     
     // Set name to match the sheet (sanitized)
@@ -376,8 +375,7 @@ function showDrillDown(country) {
     tableCreated = true;
     Logger.log("Native table created for " + country);
   } catch (e) {
-    // ADDED UI Alert to show the error to the user!
-    SpreadsheetApp.getUi().alert("Notice: Native table feature failed (" + e.message + "). Falling back to simulation.");
+    // Removed UI Alert to avoid annoying the user, just log it
     Logger.log("Failed to create native table, falling back to simulation: " + e.message);
   }
   
