@@ -156,7 +156,6 @@ function createOverview() {
   // 6. Alternating Rows (Zebra Striping)
   for (var i = startRow + 1; i < startRow + output.length; i++) {
     if (i === startRow + 3) {
-      // Skip spacer row for striping, make it white
       overviewSheet.getRange(i, 1, 1, output[0].length).setBackground("#ffffff");
       continue;
     }
@@ -168,23 +167,21 @@ function createOverview() {
   }
   
   // Set row heights
-  overviewSheet.setRowHeight(startRow + 3, 10); // Small height for spacer row
+  overviewSheet.setRowHeight(startRow + 3, 10);
   
   // Highlight MCO row for visual separation
-  var mcoRowIdx = startRow + 4; // Brazil is 1, Mexico is 2, Spacer is 3, MCO is 4
+  var mcoRowIdx = startRow + 4;
   overviewSheet.getRange(mcoRowIdx, 1, 1, output[0].length).setFontWeight("bold").setBackground("#d1e7dd");
   
   // 7. Borders
   overviewSheet.getRange(startRow, 1, output.length, output[0].length)
                .setBorder(true, true, true, true, true, true, "#e0e0e0", SpreadsheetApp.BorderStyle.SOLID);
   
-  // Remove borders for spacer row to make it look like a gap
   overviewSheet.getRange(startRow + 3, 1, 1, output[0].length).setBorder(false, false, false, false, false, false);
   
   // 8. Auto-resize columns
   overviewSheet.autoResizeColumns(1, output[0].length);
   
-  // Set row heights for data (excluding spacer which is already set)
   for (var i = startRow + 1; i < startRow + output.length; i++) {
     if (i !== startRow + 3) {
       overviewSheet.setRowHeight(i, 20);
@@ -257,13 +254,6 @@ function onEdit(e) {
       range.setValue(false); // Reset checkbox
     }
   }
-  
-  if (sheetName.indexOf("DrillDown_") === 0) {
-    // Dropdown in D1
-    if (range.getColumn() === 4 && range.getRow() === 1) {
-      applyDrillDownGrouping(sheet, val);
-    }
-  }
 }
 
 function showDrillDown(country) {
@@ -326,6 +316,19 @@ function showDrillDown(country) {
     return;
   }
   
+  // Default sort by Partner (No Partner at end)
+  rows.sort(function(a, b) {
+    var nameA = a[0].toString();
+    var nameB = b[0].toString();
+    if (nameA === "No Partner" && nameB !== "No Partner") return 1;
+    if (nameA !== "No Partner" && nameB === "No Partner") return -1;
+    var lowerA = nameA.toLowerCase();
+    var lowerB = nameB.toLowerCase();
+    if (lowerA < lowerB) return -1;
+    if (lowerA > lowerB) return 1;
+    return 0;
+  });
+  
   var output = [[
     "Partner",
     "Account Name",
@@ -349,30 +352,19 @@ function showDrillDown(country) {
     drillSheet.clear();
   }
   
-  // Set Dropdown in C1 and D1
-  drillSheet.getRange(1, 3).setValue("Group By:")
-             .setFontWeight("bold")
-             .setHorizontalAlignment("right");
-             
-  var rule = SpreadsheetApp.newDataValidation().requireValueInList([
-    "Partner", "Account Name", "Workload Name", "Workload Progress", "Account Owner", "Primary CE Owner"
-  ]).build();
+  // Write data starting at Row 1 (Simulating a simple table)
+  drillSheet.getRange(1, 1, output.length, output[0].length).setValues(output);
   
-  drillSheet.getRange(1, 4).setDataValidation(rule)
-             .setValue("Partner")
-             .setFontWeight("bold")
-             .setHorizontalAlignment("left");
+  // Get a consistent color for this country's header
+  var headerColor = getColorForCountry(country);
   
-  var startRow = 3;
-  drillSheet.getRange(startRow, 1, output.length, output[0].length).setValues(output);
-  
-  var headerRange = drillSheet.getRange(startRow, 1, 1, output[0].length);
-  headerRange.setBackground("#34a853")
+  var headerRange = drillSheet.getRange(1, 1, 1, output[0].length);
+  headerRange.setBackground(headerColor)
              .setFontColor("#ffffff")
              .setFontWeight("bold")
              .setHorizontalAlignment("center");
              
-  drillSheet.getRange(startRow + 1, 5, output.length - 1, 1)
+  drillSheet.getRange(2, 5, output.length - 1, 1)
             .setNumberFormat("$#,##0")
             .setHorizontalAlignment("right");
             
@@ -380,48 +372,46 @@ function showDrillDown(country) {
     drillSheet.setColumnWidth(col, 200);
   }
   
-  drillSheet.getRange(startRow, 1, output.length, output[0].length).setWrap(true);
+  drillSheet.getRange(1, 1, output.length, output[0].length).setWrap(true);
   
-  // Apply initial grouping/sorting by Partner (will clear backgrounds)
-  applyDrillDownGrouping(drillSheet, "Partner");
+  // Add alternating row colors to simulate table style
+  for (var i = 2; i <= output.length; i++) {
+    if (i % 2 === 0) {
+      drillSheet.getRange(i, 1, 1, output[0].length).setBackground("#f9f9f9"); // Very light grey
+    } else {
+      drillSheet.getRange(i, 1, 1, output[0].length).setBackground("#ffffff");
+    }
+  }
+  
+  // Add filter to the header row
+  drillSheet.getRange(1, 1, output.length, output[0].length).createFilter();
   
   ss.setActiveSheet(drillSheet);
 }
 
-function applyDrillDownGrouping(sheet, groupBy) {
-  var headers = sheet.getRange(3, 1, 1, sheet.getLastColumn()).getValues()[0];
-  var colIdx = headers.indexOf(groupBy);
+/**
+ * Generates a consistent color based on the country name string.
+ */
+function getColorForCountry(country) {
+  var colors = [
+    "#34a853", // Google Green
+    "#1a73e8", // Google Blue
+    "#ea4335", // Google Red
+    "#fbbc04", // Google Yellow
+    "#673ab7", // Purple
+    "#e91e63", // Pink
+    "#00bcd4", // Cyan
+    "#ff9800", // Orange
+    "#4caf50", // Light Green
+    "#9c27b0"  // Deep Purple
+  ];
   
-  if (colIdx === -1) return;
-  
-  var lastRow = sheet.getLastRow();
-  if (lastRow <= 3) return; // No data
-  
-  var dataRange = sheet.getRange(4, 1, lastRow - 3, sheet.getLastColumn());
-  var values = dataRange.getValues();
-  
-  // Sort values
-  values.sort(function(a, b) {
-    var valA = a[colIdx].toString();
-    var valB = b[colIdx].toString();
-    
-    if (groupBy === "Partner") {
-      if (valA === "No Partner" && valB !== "No Partner") return 1;
-      if (valA !== "No Partner" && valB === "No Partner") return -1;
-    }
-    
-    var lowerA = valA.toLowerCase();
-    var lowerB = valB.toLowerCase();
-    if (lowerA < lowerB) return -1;
-    if (lowerA > lowerB) return 1;
-    return 0;
-  });
-  
-  // Write back
-  dataRange.setValues(values);
-  
-  // Remove all backgrounds for data rows as requested
-  dataRange.setBackground(null);
+  var hash = 0;
+  for (var i = 0; i < country.length; i++) {
+    hash = country.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  var index = Math.abs(hash) % colors.length;
+  return colors[index];
 }
 
 function onOpen() {
