@@ -14,12 +14,10 @@ function createOverview() {
     return;
   }
   
-  // List of standard Latin American countries
-  var latamCountries = [
-    "Argentina", "Bolivia", "Brazil", "Chile", "Colombia", "Costa Rica", 
-    "Cuba", "Dominican Republic", "Ecuador", "El Salvador", "Guatemala", 
-    "Haiti", "Honduras", "Mexico", "Nicaragua", "Panama", "Paraguay", 
-    "Peru", "Uruguay", "Venezuela"
+  // List of South American countries
+  var southAmericanCountries = [
+    "Argentina", "Bolivia", "Brazil", "Chile", "Colombia", "Ecuador", 
+    "Guyana", "Paraguay", "Peru", "Suriname", "Uruguay", "Venezuela"
   ];
   
   var summary = {};
@@ -36,8 +34,8 @@ function createOverview() {
     // Filter 1: Only count rows where 'Aparently is GE' is not empty
     if (!isGE || isGE.toString().trim() === "") continue;
     
-    // Filter 2: Only count Latin American countries
-    if (latamCountries.indexOf(country) === -1) continue;
+    // Filter 2: Only count South American countries
+    if (southAmericanCountries.indexOf(country) === -1) continue;
     
     var revenue = parseRevenue(revenueStr);
     
