@@ -349,19 +349,6 @@ function showDrillDown(country) {
     drillSheet.showSheet();
     var existingFilter = drillSheet.getFilter();
     if (existingFilter) existingFilter.remove();
-    
-    // Also remove existing table if any to avoid conflicts
-    try {
-      var tables = drillSheet.getTables();
-      if (tables && tables.length > 0) {
-        // There isn't a simple removeTable method documented in the snippet, 
-        // but usually clearing the sheet removes the table structure.
-        // If not, we might get an error when adding a new one.
-      }
-    } catch(e) {
-      // Ignore
-    }
-    
     drillSheet.clear();
   }
   
@@ -369,12 +356,15 @@ function showDrillDown(country) {
   var dataRange = drillSheet.getRange(1, 1, output.length, output[0].length);
   dataRange.setValues(output);
   
-  // Try to use native Tables feature
+  // Try to use native Tables feature (using createTable)
   var tableCreated = false;
   try {
-    // Check if addTable exists
-    if (typeof drillSheet.addTable === 'function') {
-      var table = drillSheet.addTable(dataRange);
+    if (typeof drillSheet.createTable === 'function') {
+      // createTable(range, hasHeaders)
+      var table = drillSheet.createTable(dataRange, true);
+      
+      // Set name to match the sheet (sanitized)
+      table.setName("Table_" + country.replace(/[^a-zA-Z0-9]/g, "_"));
       
       // Apply theme safely
       var theme = getThemeForCountry(country);
@@ -391,7 +381,7 @@ function showDrillDown(country) {
     Logger.log("Failed to create native table, falling back to simulation: " + e.message);
   }
   
-  // Fallback to simulation if native table failed or was not supported
+  // Fallback to simulation if native table failed
   if (!tableCreated) {
     var headerColor = getColorForCountry(country);
     
