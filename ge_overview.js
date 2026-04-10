@@ -141,10 +141,10 @@ function createOverview() {
                .setNumberFormat("$#,##0")
                .setHorizontalAlignment("right");
   
-  // 5. Alternating Rows (Zebra Striping) - For Overview we keep simple alternating
+  // 5. Alternating Rows (Zebra Striping) - Darker grey for better contrast
   for (var i = startRow + 1; i < startRow + output.length; i++) {
     if ((i - startRow) % 2 === 0) {
-      overviewSheet.getRange(i, 1, 1, output[0].length).setBackground("#f8f9fa");
+      overviewSheet.getRange(i, 1, 1, output[0].length).setBackground("#e0e0e0");
     } else {
       overviewSheet.getRange(i, 1, 1, output[0].length).setBackground("#ffffff");
     }
@@ -334,10 +334,10 @@ function showDrillDown(country) {
   // Enable Wrap for all data and headers
   drillSheet.getRange(startRow, 1, output.length, output[0].length).setWrap(true);
   
-  // Alternating Rows (Zebra Striping) - Switched to standard row-by-row as requested
+  // Alternating Rows (Zebra Striping) - Darker grey for better contrast
   for (var i = startRow + 1; i < startRow + output.length; i++) {
     if ((i - startRow) % 2 === 0) {
-      drillSheet.getRange(i, 1, 1, output[0].length).setBackground("#f2f2f2");
+      drillSheet.getRange(i, 1, 1, output[0].length).setBackground("#e0e0e0");
     } else {
       drillSheet.getRange(i, 1, 1, output[0].length).setBackground("#ffffff");
     }
