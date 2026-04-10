@@ -26,10 +26,10 @@ function createOverview() {
     return;
   }
   
-  // List of South American countries
-  var southAmericanCountries = [
+  // List of allowed countries (South America + Mexico)
+  var allowedCountries = [
     "Argentina", "Bolivia", "Brazil", "Brasil", "Chile", "Colombia", "Ecuador", 
-    "Guyana", "Paraguay", "Peru", "Suriname", "Uruguay", "Venezuela"
+    "Guyana", "Mexico", "Paraguay", "Peru", "Suriname", "Uruguay", "Venezuela"
   ];
   
   var summary = {};
@@ -46,8 +46,8 @@ function createOverview() {
     // Filter 1: Only count rows where 'Aparently is GE' (or 'Aparently is') is not empty
     if (!isGE || isGE.toString().trim() === "") continue;
     
-    // Filter 2: Only count South American countries
-    if (southAmericanCountries.indexOf(country) === -1) continue;
+    // Filter 2: Only count allowed countries
+    if (allowedCountries.indexOf(country) === -1) continue;
     
     var revenue = parseRevenue(revenueStr);
     
