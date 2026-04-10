@@ -292,14 +292,15 @@ function showDrillDown(country) {
     return 0;
   });
   
+  // More readable headers for Drill Down
   var output = [[
     "Partner",
     "Workload Name",
     "Workload Progress",
-    "Account: Account Name",
-    "Account: Account Owner",
-    "Primary CE Technical Owner",
-    "Gross Annual Recurring Revenue"
+    "Account Name",
+    "Account Owner",
+    "Primary CE Owner",
+    "Annual Revenue"
   ]];
   
   output = output.concat(rows);
