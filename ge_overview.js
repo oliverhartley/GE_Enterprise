@@ -385,16 +385,16 @@ function showDrillDown(country) {
     Logger.log("Sheets API failed to create table, falling back to simulation: " + e.message);
   }
   
+  // Color the header row directly, even for native tables!
+  var headerColor = getColorForCountry(country);
+  var headerRange = drillSheet.getRange(1, 1, 1, output[0].length);
+  headerRange.setBackground(headerColor)
+             .setFontColor("#ffffff")
+             .setFontWeight("bold")
+             .setHorizontalAlignment("center");
+  
   // Fallback to simulation if native table failed
   if (!tableCreated) {
-    var headerColor = getColorForCountry(country);
-    
-    var headerRange = drillSheet.getRange(1, 1, 1, output[0].length);
-    headerRange.setBackground(headerColor)
-               .setFontColor("#ffffff")
-               .setFontWeight("bold")
-               .setHorizontalAlignment("center");
-               
     // Alternating rows
     for (var i = 2; i <= output.length; i++) {
       if (i % 2 === 0) {
