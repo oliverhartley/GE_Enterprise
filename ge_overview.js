@@ -238,8 +238,8 @@ function parseRevenue(str) {
 }
 
 // ---- Checkbox Navigation Feature ----
-
-function onEdit(e) {
+// Renamed to avoid conflict with simple trigger and enable installable trigger!
+function handleEdit(e) {
   var range = e.range;
   var sheet = range.getSheet();
   var sheetName = sheet.getName();
@@ -387,7 +387,6 @@ function showDrillDown(country) {
     tableCreated = true;
     Logger.log("Native table created via Sheets API for " + country + " with name " + uniqueTableName);
   } catch (e) {
-    // ADDED ALERT BACK to see the specific error!
     SpreadsheetApp.getUi().alert("Sheets API Error for " + country + ": " + e.message);
     Logger.log("Sheets API failed to create table, falling back to simulation: " + e.message);
   }
