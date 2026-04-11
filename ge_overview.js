@@ -274,6 +274,7 @@ function showDrillDown(country) {
   var accNameIdx = headers.indexOf("Account: Account Name");
   var accOwnerIdx = headers.indexOf("Account: Account Owner");
   var ceOwnerIdx = headers.indexOf("Primary CE Technical Owner");
+  var statusIdx = headers.indexOf("PSF Status"); // Found in CSV headers
   
   if (countryIdx === -1 || revenueIdx === -1 || partnerIdx === -1 || geIdx === -1 || workloadIdx === -1) {
     SpreadsheetApp.getUi().alert("Required headers not found.");
@@ -305,8 +306,10 @@ function showDrillDown(country) {
       var accName = accNameIdx !== -1 ? row[accNameIdx] : "N/A";
       var accOwner = accOwnerIdx !== -1 ? row[accOwnerIdx] : "N/A";
       var ceOwner = ceOwnerIdx !== -1 ? row[ceOwnerIdx] : "N/A";
+      var status = statusIdx !== -1 ? row[statusIdx] : "N/A";
       
-      rows.push([partner, accName, workload, progress, revenue, accOwner, ceOwner]);
+      // Insert Status between progress and revenue
+      rows.push([partner, accName, workload, progress, status, revenue, accOwner, ceOwner]);
     }
   }
   
@@ -333,6 +336,7 @@ function showDrillDown(country) {
     "Account Name",
     "Workload Name",
     "Workload Progress",
+    "Status", // Added between Progress and Revenue
     "Annual Revenue",
     "Account Owner",
     "Primary CE Owner"
@@ -409,7 +413,8 @@ function showDrillDown(country) {
   }
   
   // Common formatting (currency, width, wrap)
-  drillSheet.getRange(2, 5, output.length - 1, 1)
+  // Annual Revenue is now column 6 (1-indexed)
+  drillSheet.getRange(2, 6, output.length - 1, 1)
             .setNumberFormat("$#,##0")
             .setHorizontalAlignment("right");
             
