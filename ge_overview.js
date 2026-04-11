@@ -360,12 +360,16 @@ function showDrillDown(country) {
   var tableCreated = false;
   try {
     var sheetId = drillSheet.getSheetId();
+    
+    // Use a unique table name every time to avoid "Table name already exists" errors!
+    var uniqueTableName = "Table_" + country.replace(/[^a-zA-Z0-9]/g, "_") + "_" + new Date().getTime();
+    
     var resource = {
       requests: [
         {
           addTable: {
             table: {
-              name: "Table_" + country.replace(/[^a-zA-Z0-9]/g, "_"),
+              name: uniqueTableName,
               range: {
                 sheetId: sheetId,
                 startRowIndex: 0,
@@ -381,7 +385,7 @@ function showDrillDown(country) {
     
     Sheets.Spreadsheets.batchUpdate(resource, ss.getId());
     tableCreated = true;
-    Logger.log("Native table created via Sheets API for " + country);
+    Logger.log("Native table created via Sheets API for " + country + " with name " + uniqueTableName);
   } catch (e) {
     Logger.log("Sheets API failed to create table, falling back to simulation: " + e.message);
   }
