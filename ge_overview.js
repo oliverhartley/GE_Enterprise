@@ -381,6 +381,8 @@ function showDrillDown(country) {
     tableCreated = true;
     Logger.log("Native table created via Sheets API for " + country + " with name " + tableName);
   } catch (e) {
+    // RESTORE ALERT TO DEBUG!
+    SpreadsheetApp.getUi().alert("Sheets API Error for " + country + ": " + e.message);
     Logger.log("Sheets API failed to create table, falling back to simulation: " + e.message);
   }
   
@@ -389,8 +391,6 @@ function showDrillDown(country) {
     try {
       var theme = getBandingThemeForCountry(country);
       
-      // Wait a bit or just apply it? The table might have created its own banding.
-      // Let's try to remove existing bandings on the range first!
       var bandings = dataRange.getBandings();
       for (var i = 0; i < bandings.length; i++) {
         bandings[i].remove();
