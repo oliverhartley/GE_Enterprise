@@ -343,7 +343,6 @@ function showDrillDown(country) {
   var sheetName = "DrillDown_" + country;
   var drillSheet = ss.getSheetByName(sheetName);
   
-  // INSTEAD of clearing, DELETE the sheet if it exists to clear table metadata!
   if (drillSheet) {
     ss.deleteSheet(drillSheet);
   }
@@ -357,8 +356,6 @@ function showDrillDown(country) {
   var tableCreated = false;
   try {
     var sheetId = drillSheet.getSheetId();
-    
-    // Use the sheet name as the table name (no timestamp!)
     var tableName = sheetName.replace(/[^a-zA-Z0-9]/g, "_");
     
     var resource = {
@@ -384,8 +381,26 @@ function showDrillDown(country) {
     tableCreated = true;
     Logger.log("Native table created via Sheets API for " + country + " with name " + tableName);
   } catch (e) {
-    SpreadsheetApp.getUi().alert("Sheets API Error for " + country + ": " + e.message);
     Logger.log("Sheets API failed to create table, falling back to simulation: " + e.message);
+  }
+  
+  // Apply Banding Theme based on country to change color!
+  if (tableCreated) {
+    try {
+      var theme = getBandingThemeForCountry(country);
+      
+      // Wait a bit or just apply it? The table might have created its own banding.
+      // Let's try to remove existing bandings on the range first!
+      var bandings = dataRange.getBandings();
+      for (var i = 0; i < bandings.length; i++) {
+        bandings[i].remove();
+      }
+      
+      dataRange.applyRowBanding(theme);
+      Logger.log("Applied banding theme for " + country);
+    } catch (bandingError) {
+      Logger.log("Failed to apply banding theme: " + bandingError.message);
+    }
   }
   
   // Fallback to simulation if native table failed
@@ -423,6 +438,24 @@ function showDrillDown(country) {
   drillSheet.getRange(1, 1, output.length, output[0].length).setWrap(true);
   
   ss.setActiveSheet(drillSheet);
+}
+
+function getBandingThemeForCountry(country) {
+  var themes = [
+    SpreadsheetApp.BandingTheme.LIGHT_GREEN,
+    SpreadsheetApp.BandingTheme.LIGHT_BLUE,
+    SpreadsheetApp.BandingTheme.INDIGO,
+    SpreadsheetApp.BandingTheme.ORANGE,
+    SpreadsheetApp.BandingTheme.PINK,
+    SpreadsheetApp.BandingTheme.TEAL
+  ];
+  
+  var hash = 0;
+  for (var i = 0; i < country.length; i++) {
+    hash = country.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  var index = Math.abs(hash) % themes.length;
+  return themes[index];
 }
 
 function getColorForCountry(country) {
