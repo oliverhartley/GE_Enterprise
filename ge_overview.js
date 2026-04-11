@@ -244,9 +244,6 @@ function handleEdit(e) {
   var sheetName = sheet.getName();
   
   if (sheetName === "GE_Overview") {
-    // Debug log to cell J1
-    sheet.getRange("J1").setValue("Trigger Fired: " + new Date().getTime());
-    
     var val = range.getValue();
     if (range.getColumn() === 1 && range.getRow() >= 6 && val === true) {
       var country = sheet.getRange(range.getRow(), 2).getValue();
@@ -345,14 +342,12 @@ function showDrillDown(country) {
   
   var sheetName = "DrillDown_" + country;
   var drillSheet = ss.getSheetByName(sheetName);
-  if (!drillSheet) {
-    drillSheet = ss.insertSheet(sheetName);
-  } else {
-    drillSheet.showSheet();
-    var existingFilter = drillSheet.getFilter();
-    if (existingFilter) existingFilter.remove();
-    drillSheet.clear();
+  
+  // INSTEAD of clearing, DELETE the sheet if it exists to clear table metadata!
+  if (drillSheet) {
+    ss.deleteSheet(drillSheet);
   }
+  drillSheet = ss.insertSheet(sheetName);
   
   // Write data starting at Row 1
   var dataRange = drillSheet.getRange(1, 1, output.length, output[0].length);
@@ -363,15 +358,15 @@ function showDrillDown(country) {
   try {
     var sheetId = drillSheet.getSheetId();
     
-    // Use a unique table name every time to avoid "Table name already exists" errors!
-    var uniqueTableName = "Table_" + country.replace(/[^a-zA-Z0-9]/g, "_") + "_" + new Date().getTime();
+    // Use the sheet name as the table name (no timestamp!)
+    var tableName = sheetName.replace(/[^a-zA-Z0-9]/g, "_");
     
     var resource = {
       requests: [
         {
           addTable: {
             table: {
-              name: uniqueTableName,
+              name: tableName,
               range: {
                 sheetId: sheetId,
                 startRowIndex: 0,
@@ -387,7 +382,7 @@ function showDrillDown(country) {
     
     Sheets.Spreadsheets.batchUpdate(resource, ss.getId());
     tableCreated = true;
-    Logger.log("Native table created via Sheets API for " + country + " with name " + uniqueTableName);
+    Logger.log("Native table created via Sheets API for " + country + " with name " + tableName);
   } catch (e) {
     SpreadsheetApp.getUi().alert("Sheets API Error for " + country + ": " + e.message);
     Logger.log("Sheets API failed to create table, falling back to simulation: " + e.message);
