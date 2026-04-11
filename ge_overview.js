@@ -274,12 +274,38 @@ function showDrillDown(country) {
   var accNameIdx = headers.indexOf("Account: Account Name");
   var accOwnerIdx = headers.indexOf("Account: Account Owner");
   var ceOwnerIdx = headers.indexOf("Primary CE Technical Owner");
-  var statusIdx = headers.indexOf("PSF Status"); // Found in CSV headers
   
   if (countryIdx === -1 || revenueIdx === -1 || partnerIdx === -1 || geIdx === -1 || workloadIdx === -1) {
     SpreadsheetApp.getUi().alert("Required headers not found.");
     return;
   }
+  
+  // --- Preservation Logic for Status Column ---
+  var preservedStatus = {};
+  var sheetName = "DrillDown_" + country;
+  var drillSheet = ss.getSheetByName(sheetName);
+  
+  if (drillSheet) {
+    var existingData = drillSheet.getDataRange().getValues();
+    var existingHeaders = existingData[0];
+    var workNameCol = existingHeaders.indexOf("Workload Name");
+    var statusCol = existingHeaders.indexOf("Status");
+    
+    if (workNameCol !== -1 && statusCol !== -1) {
+      for (var i = 1; i < existingData.length; i++) {
+        var row = existingData[i];
+        var workloadName = row[workNameCol];
+        var statusVal = row[statusCol];
+        if (workloadName && statusVal) {
+          preservedStatus[workloadName] = statusVal;
+        }
+      }
+    }
+    
+    // Delete old sheet to ensure clean table creation
+    ss.deleteSheet(drillSheet);
+  }
+  // ---------------------------------------------
   
   var rows = [];
   
@@ -306,7 +332,9 @@ function showDrillDown(country) {
       var accName = accNameIdx !== -1 ? row[accNameIdx] : "N/A";
       var accOwner = accOwnerIdx !== -1 ? row[accOwnerIdx] : "N/A";
       var ceOwner = ceOwnerIdx !== -1 ? row[ceOwnerIdx] : "N/A";
-      var status = statusIdx !== -1 ? row[statusIdx] : "N/A";
+      
+      // Use preserved status or empty string
+      var status = preservedStatus[workload] || "";
       
       // Insert Status between progress and revenue
       rows.push([partner, accName, workload, progress, status, revenue, accOwner, ceOwner]);
@@ -344,12 +372,7 @@ function showDrillDown(country) {
   
   output = output.concat(rows);
   
-  var sheetName = "DrillDown_" + country;
-  var drillSheet = ss.getSheetByName(sheetName);
-  
-  if (drillSheet) {
-    ss.deleteSheet(drillSheet);
-  }
+  // Re-insert sheet after deletion
   drillSheet = ss.insertSheet(sheetName);
   
   // Write data starting at Row 1
