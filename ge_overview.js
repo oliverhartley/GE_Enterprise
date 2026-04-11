@@ -238,14 +238,16 @@ function parseRevenue(str) {
 }
 
 // ---- Checkbox Navigation Feature ----
-// Renamed to avoid conflict with simple trigger and enable installable trigger!
 function handleEdit(e) {
   var range = e.range;
   var sheet = range.getSheet();
   var sheetName = sheet.getName();
-  var val = range.getValue();
   
   if (sheetName === "GE_Overview") {
+    // Debug log to cell J1
+    sheet.getRange("J1").setValue("Trigger Fired: " + new Date().getTime());
+    
+    var val = range.getValue();
     if (range.getColumn() === 1 && range.getRow() >= 6 && val === true) {
       var country = sheet.getRange(range.getRow(), 2).getValue();
       if (country) {
