@@ -624,3 +624,90 @@ function createDailyTrigger() {
       
   Logger.log("Trigger created for hideDrillDownSheets at 1 AM daily.");
 }
+
+// ---- Data Pipeline Automation ----
+
+function processVectorFile() {
+  var srcFolderId = "1n5ux0fee-L93f_Sk-CXiBK4b_ODPD9Q4";
+  var dstFolderId = "1-FK-QOVByVXq16p4y_DPJotrg9qSN3mF";
+  
+  var srcFolder = DriveApp.getFolderById(srcFolderId);
+  var dstFolder = DriveApp.getFolderById(dstFolderId);
+  
+  var files = srcFolder.getFiles();
+  var processedCount = 0;
+  
+  while (files.hasNext()) {
+    var file = files.next();
+    var mimeType = file.getMimeType();
+    var data = [];
+    
+    if (mimeType === MimeType.GOOGLE_SHEETS) {
+      var ss = SpreadsheetApp.open(file);
+      var sheet = ss.getSheets()[0];
+      data = sheet.getDataRange().getValues();
+    } else if (mimeType === MimeType.CSV || file.getName().indexOf(".csv") !== -1) {
+      var csvContent = file.getBlob().getDataAsString();
+      data = Utilities.parseCsv(csvContent);
+    } else {
+      Logger.log("Unsupported file type: " + file.getName());
+      continue;
+    }
+    
+    if (data.length > 0) {
+      // Update DB
+      var mainSS = SpreadsheetApp.getActiveSpreadsheet();
+      var dbSheet = mainSS.getSheetByName("Gemini Workload DB");
+      if (!dbSheet) {
+        dbSheet = mainSS.insertSheet("Gemini Workload DB");
+      }
+      
+      dbSheet.clear();
+      dbSheet.getRange(1, 1, data.length, data[0].length).setValues(data);
+      
+      // Log change
+      logUpdate(file.getName(), data.length);
+      
+      // Move and Rename file
+      file.moveTo(dstFolder);
+      var dateStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd_HH-mm");
+      file.setName("GE_Worloads_" + dateStr);
+      
+      processedCount++;
+    }
+  }
+  
+  if (processedCount > 0) {
+    // Regenerate Overview since DB changed
+    createOverview();
+  }
+}
+
+function logUpdate(fileName, rowCount) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var logSheet = ss.getSheetByName("Update_Log");
+  if (!logSheet) {
+    logSheet = ss.insertSheet("Update_Log");
+    logSheet.appendRow(["Date", "File Processed", "Total Rows"]);
+    logSheet.getRange(1, 1, 1, 3).setFontWeight("bold");
+  }
+  
+  var dateStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+  logSheet.appendRow([dateStr, fileName, rowCount]);
+}
+
+function createVectorTrigger() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'processVectorFile') {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  
+  ScriptApp.newTrigger('processVectorFile')
+      .timeBased()
+      .everyHours(12)
+      .create();
+      
+  Logger.log("Trigger created for processVectorFile every 12 hours.");
+}
