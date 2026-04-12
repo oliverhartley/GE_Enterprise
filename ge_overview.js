@@ -237,12 +237,13 @@ function parseRevenue(str) {
   return isNaN(val) ? 0 : val;
 }
 
-// ---- Checkbox Navigation Feature ----
+// ---- Checkbox Navigation & Status Sync Feature ----
 function handleEdit(e) {
   var range = e.range;
   var sheet = range.getSheet();
   var sheetName = sheet.getName();
   
+  // 1. Handle Checkbox in GE_Overview
   if (sheetName === "GE_Overview") {
     var val = range.getValue();
     if (range.getColumn() === 1 && range.getRow() >= 6 && val === true) {
@@ -252,6 +253,88 @@ function handleEdit(e) {
       }
       range.setValue(false); // Reset checkbox
     }
+  }
+  
+  // 2. Handle Status edit in DrillDown sheets
+  if (sheetName.indexOf("DrillDown_") === 0) {
+    var col = range.getColumn();
+    var row = range.getRow();
+    
+    // Status column is 5
+    if (col === 5 && row > 1) {
+      var statusVal = range.getValue();
+      var workloadName = sheet.getRange(row, 3).getValue(); // Workload Name is col 3
+      
+      if (workloadName) {
+        // A. Update central store
+        updateStatus(workloadName, statusVal);
+        
+        // B. Sync to other visible DrillDown sheets without lag
+        var ss = SpreadsheetApp.getActiveSpreadsheet();
+        var sheets = ss.getSheets();
+        
+        for (var i = 0; i < sheets.length; i++) {
+          var s = sheets[i];
+          var name = s.getName();
+          
+          if (name.indexOf("DrillDown_") === 0 && name !== sheetName) {
+            var data = s.getDataRange().getValues();
+            for (var j = 1; j < data.length; j++) {
+              if (data[j][2] === workloadName) { // Column 3 is Workload Name (Index 2)
+                s.getRange(j + 1, 5).setValue(statusVal); // Column 5 is Status
+                break; // Assume workload name is unique per sheet
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+function getStatusMap() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var statusSheet = ss.getSheetByName("Workload_Statuses");
+  if (!statusSheet) {
+    statusSheet = ss.insertSheet("Workload_Statuses");
+    statusSheet.appendRow(["Workload Name", "Status"]);
+    statusSheet.getRange(1, 1, 1, 2).setFontWeight("bold");
+    return {};
+  }
+  
+  var data = statusSheet.getDataRange().getValues();
+  var map = {};
+  for (var i = 1; i < data.length; i++) {
+    var workload = data[i][0];
+    var status = data[i][1];
+    if (workload) {
+      map[workload] = status;
+    }
+  }
+  return map;
+}
+
+function updateStatus(workloadName, status) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var statusSheet = ss.getSheetByName("Workload_Statuses");
+  if (!statusSheet) {
+    statusSheet = ss.insertSheet("Workload_Statuses");
+    statusSheet.appendRow(["Workload Name", "Status"]);
+    statusSheet.getRange(1, 1, 1, 2).setFontWeight("bold");
+  }
+  
+  var data = statusSheet.getDataRange().getValues();
+  var found = false;
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === workloadName) {
+      statusSheet.getRange(i + 1, 2).setValue(status);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    statusSheet.appendRow([workloadName, status]);
   }
 }
 
@@ -280,32 +363,8 @@ function showDrillDown(country) {
     return;
   }
   
-  // --- Preservation Logic for Status Column ---
-  var preservedStatus = {};
-  var sheetName = "DrillDown_" + country;
-  var drillSheet = ss.getSheetByName(sheetName);
-  
-  if (drillSheet) {
-    var existingData = drillSheet.getDataRange().getValues();
-    var existingHeaders = existingData[0];
-    var workNameCol = existingHeaders.indexOf("Workload Name");
-    var statusCol = existingHeaders.indexOf("Status");
-    
-    if (workNameCol !== -1 && statusCol !== -1) {
-      for (var i = 1; i < existingData.length; i++) {
-        var row = existingData[i];
-        var workloadName = row[workNameCol];
-        var statusVal = row[statusCol];
-        if (workloadName && statusVal) {
-          preservedStatus[workloadName] = statusVal;
-        }
-      }
-    }
-    
-    // Delete old sheet to ensure clean table creation
-    ss.deleteSheet(drillSheet);
-  }
-  // ---------------------------------------------
+  // Read preserved statuses from central store
+  var preservedStatus = getStatusMap();
   
   var rows = [];
   
@@ -333,7 +392,7 @@ function showDrillDown(country) {
       var accOwner = accOwnerIdx !== -1 ? row[accOwnerIdx] : "N/A";
       var ceOwner = ceOwnerIdx !== -1 ? row[ceOwnerIdx] : "N/A";
       
-      // Use preserved status or empty string
+      // Use status from central store
       var status = preservedStatus[workload] || "";
       
       // Insert Status between progress and revenue
@@ -372,7 +431,12 @@ function showDrillDown(country) {
   
   output = output.concat(rows);
   
-  // Re-insert sheet after deletion
+  var sheetName = "DrillDown_" + country;
+  var drillSheet = ss.getSheetByName(sheetName);
+  
+  if (drillSheet) {
+    ss.deleteSheet(drillSheet);
+  }
   drillSheet = ss.insertSheet(sheetName);
   
   // Write data starting at Row 1
