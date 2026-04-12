@@ -423,10 +423,27 @@ function showDrillDown(country) {
   // Add dropdown to Status column (Column 5)
   var statusRange = drillSheet.getRange(2, 5, output.length - 1, 1);
   var rule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(['On Track', 'Delayed by Customer', 'Delayed by Partner', 'Delayed by Client'], true)
+    .requireValueInList(['On Track', 'Delayed by Customer', 'Delayed by Partner', 'Delayed by Google'], true)
     .setAllowInvalid(true) // Allow custom text too
     .build();
   statusRange.setDataValidation(rule);
+  
+  // Add Conditional Formatting to Status column
+  var ruleOnTrack = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo("On Track")
+    .setBackground("#d1e7dd") // Soft green
+    .setRanges([statusRange])
+    .build();
+    
+  var ruleDelayed = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextContains("Delayed")
+    .setBackground("#fff3cd") // Soft yellow
+    .setRanges([statusRange])
+    .build();
+    
+  var rules = drillSheet.getConditionalFormatRules();
+  rules.push(ruleOnTrack, ruleDelayed);
+  drillSheet.setConditionalFormatRules(rules);
   
   // Fallback to simulation if native table failed
   if (!tableCreated) {
