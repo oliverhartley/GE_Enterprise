@@ -655,9 +655,17 @@ function processVectorFile() {
     }
     
     if (data.length > 0) {
-      // Update DB
       var mainSS = SpreadsheetApp.getActiveSpreadsheet();
       var dbSheet = mainSS.getSheetByName("Gemini Workload DB");
+      var oldData = [];
+      if (dbSheet) {
+        oldData = dbSheet.getDataRange().getValues();
+      }
+      
+      // Track detailed changes before overwriting
+      trackChanges(oldData, data);
+      
+      // Update DB
       if (!dbSheet) {
         dbSheet = mainSS.insertSheet("Gemini Workload DB");
       }
@@ -665,7 +673,7 @@ function processVectorFile() {
       dbSheet.clear();
       dbSheet.getRange(1, 1, data.length, data[0].length).setValues(data);
       
-      // Log change
+      // Log change summary
       logUpdate(file.getName(), data.length);
       
       // Move and Rename file
@@ -680,6 +688,78 @@ function processVectorFile() {
   if (processedCount > 0) {
     // Regenerate Overview since DB changed
     createOverview();
+  }
+}
+
+function trackChanges(oldData, newData) {
+  if (oldData.length === 0) return; // Nothing to compare if DB was empty
+  
+  var oldHeaders = oldData[0];
+  var newHeaders = newData[0];
+  
+  var oldWorkloadIdx = oldHeaders.indexOf("Workload: Workload Name");
+  var oldProgressIdx = oldHeaders.indexOf("Workload Progress");
+  
+  var newWorkloadIdx = newHeaders.indexOf("Workload: Workload Name");
+  var newProgressIdx = newHeaders.indexOf("Workload Progress");
+  
+  if (oldWorkloadIdx === -1 || oldProgressIdx === -1 || newWorkloadIdx === -1 || newProgressIdx === -1) {
+    Logger.log("Headers not found for change tracking.");
+    return;
+  }
+  
+  var oldMap = {};
+  for (var i = 1; i < oldData.length; i++) {
+    var name = oldData[i][oldWorkloadIdx];
+    var prog = oldData[i][oldProgressIdx];
+    if (name) oldMap[name] = prog;
+  }
+  
+  var newMap = {};
+  for (var i = 1; i < newData.length; i++) {
+    var name = newData[i][newWorkloadIdx];
+    var prog = newData[i][newProgressIdx];
+    if (name) newMap[name] = prog;
+  }
+  
+  var changes = [];
+  var dateStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+  
+  // Check for Added and Updated
+  for (var name in newMap) {
+    var newProg = newMap[name];
+    if (!oldMap.hasOwnProperty(name)) {
+      changes.push([dateStr, "Added", name, "", newProg]);
+    } else {
+      var oldProg = oldMap[name];
+      if (oldProg !== newProg) {
+        changes.push([dateStr, "Progress Changed", name, oldProg, newProg]);
+      }
+    }
+  }
+  
+  // Check for Removed
+  for (var name in oldMap) {
+    if (!newMap.hasOwnProperty(name)) {
+      changes.push([dateStr, "Removed", name, oldMap[name], ""]);
+    }
+  }
+  
+  if (changes.length > 0) {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var logSheet = ss.getSheetByName("Detailed_Changes_Log");
+    if (!logSheet) {
+      logSheet = ss.insertSheet("Detailed_Changes_Log");
+      logSheet.appendRow(["Date", "Action", "Workload Name", "Old Progress", "New Progress"]);
+      logSheet.getRange(1, 1, 1, 5).setFontWeight("bold");
+    }
+    
+    logSheet.getRange(logSheet.getLastRow() + 1, 1, changes.length, 5).setValues(changes);
+    
+    // Format the log sheet
+    logSheet.getRange(logSheet.getLastRow() - changes.length + 1, 1, changes.length, 5)
+            .setVerticalAlignment("middle");
+    logSheet.autoResizeColumns(1, 5);
   }
 }
 
