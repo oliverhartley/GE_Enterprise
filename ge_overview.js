@@ -420,6 +420,14 @@ function showDrillDown(country) {
              .setFontWeight("bold")
              .setHorizontalAlignment("center");
   
+  // Add dropdown to Status column (Column 5)
+  var statusRange = drillSheet.getRange(2, 5, output.length - 1, 1);
+  var rule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['On Track', 'Delayed by Customer', 'Delayed by Partner', 'Delayed by Client'], true)
+    .setAllowInvalid(true) // Allow custom text too
+    .build();
+  statusRange.setDataValidation(rule);
+  
   // Fallback to simulation if native table failed
   if (!tableCreated) {
     // Alternating rows
