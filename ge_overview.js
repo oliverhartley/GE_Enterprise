@@ -260,10 +260,13 @@ function handleEdit(e) {
     var col = range.getColumn();
     var row = range.getRow();
     
-    // Status column is 5
-    if (col === 5 && row > 1) {
+    var isMCOEdit = (sheetName === "DrillDown_MCO");
+    var targetStatusCol = isMCOEdit ? 6 : 5;
+    var targetWorkNameCol = isMCOEdit ? 4 : 3;
+    
+    if (col === targetStatusCol && row > 1) {
       var statusVal = range.getValue();
-      var workloadName = sheet.getRange(row, 3).getValue(); // Workload Name is col 3
+      var workloadName = sheet.getRange(row, targetWorkNameCol).getValue();
       
       if (workloadName) {
         // A. Update central store
@@ -279,9 +282,13 @@ function handleEdit(e) {
           
           if (name.indexOf("DrillDown_") === 0 && name !== sheetName) {
             var data = s.getDataRange().getValues();
+            var isMCOSheet = (name === "DrillDown_MCO");
+            var workNameIdx = isMCOSheet ? 3 : 2;
+            var statusIdx = isMCOSheet ? 5 : 4;
+            
             for (var j = 1; j < data.length; j++) {
-              if (data[j][2] === workloadName) { // Column 3 is Workload Name (Index 2)
-                s.getRange(j + 1, 5).setValue(statusVal); // Column 5 is Status
+              if (data[j][workNameIdx] === workloadName) {
+                s.getRange(j + 1, statusIdx + 1).setValue(statusVal);
                 break; // Assume workload name is unique per sheet
               }
             }
@@ -395,8 +402,12 @@ function showDrillDown(country) {
       // Use status from central store
       var status = preservedStatus[workload] || "";
       
-      // Insert Status between progress and revenue
-      rows.push([partner, accName, workload, progress, status, revenue, accOwner, ceOwner]);
+      // For MCO, add Country between Partner and Account Name
+      if (country === "MCO") {
+        rows.push([partner, rowCountry, accName, workload, progress, status, revenue, accOwner, ceOwner]);
+      } else {
+        rows.push([partner, accName, workload, progress, status, revenue, accOwner, ceOwner]);
+      }
     }
   }
   
@@ -418,16 +429,31 @@ function showDrillDown(country) {
     return 0;
   });
   
-  var output = [[
-    "Partner",
-    "Account Name",
-    "Workload Name",
-    "Workload Progress",
-    "Status", // Added between Progress and Revenue
-    "Annual Revenue",
-    "Account Owner",
-    "Primary CE Owner"
-  ]];
+  var output = [];
+  if (country === "MCO") {
+    output.push([
+      "Partner",
+      "Country", // Added for MCO only
+      "Account Name",
+      "Workload Name",
+      "Workload Progress",
+      "Status",
+      "Annual Revenue",
+      "Account Owner",
+      "Primary CE Owner"
+    ]);
+  } else {
+    output.push([
+      "Partner",
+      "Account Name",
+      "Workload Name",
+      "Workload Progress",
+      "Status",
+      "Annual Revenue",
+      "Account Owner",
+      "Primary CE Owner"
+    ]);
+  }
   
   output = output.concat(rows);
   
@@ -484,8 +510,9 @@ function showDrillDown(country) {
              .setFontWeight("bold")
              .setHorizontalAlignment("center");
   
-  // Add dropdown to Status column (Column 5)
-  var statusRange = drillSheet.getRange(2, 5, output.length - 1, 1);
+  // Add dropdown to Status column
+  var statusCol = (country === "MCO") ? 6 : 5;
+  var statusRange = drillSheet.getRange(2, statusCol, output.length - 1, 1);
   var rule = SpreadsheetApp.newDataValidation()
     .requireValueInList(['On Track', 'Delayed by Customer', 'Delayed by Partner', 'Delayed by Google'], true)
     .setAllowInvalid(true) // Allow custom text too
@@ -525,8 +552,8 @@ function showDrillDown(country) {
   }
   
   // Common formatting (currency, width, wrap)
-  // Annual Revenue is now column 6 (1-indexed)
-  drillSheet.getRange(2, 6, output.length - 1, 1)
+  var revenueCol = (country === "MCO") ? 7 : 6;
+  drillSheet.getRange(2, revenueCol, output.length - 1, 1)
             .setNumberFormat("$#,##0")
             .setHorizontalAlignment("right");
             
