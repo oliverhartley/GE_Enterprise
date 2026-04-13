@@ -28,6 +28,9 @@ function processVectorFile() {
     }
     
     if (data.length > 0) {
+      // Add calculated columns at the end
+      data = addCalculatedColumns(data);
+      
       var mainSS = SpreadsheetApp.getActiveSpreadsheet();
       var dbSheet = mainSS.getSheetByName("Gemini Workload DB");
       var oldData = [];
@@ -62,6 +65,91 @@ function processVectorFile() {
     // Regenerate Overview since DB changed
     createOverview();
   }
+}
+
+function addCalculatedColumns(data) {
+  if (data.length === 0) return data;
+  
+  var headers = data[0];
+  
+  var psfInvIdx = headers.indexOf("PSF Investment");
+  var workloadIdx = headers.indexOf("Workload: Workload Name");
+  var opportunityIdx = headers.indexOf("Opportunity");
+  
+  if (psfInvIdx === -1 || workloadIdx === -1 || opportunityIdx === -1) {
+    Logger.log("Required headers for calculation not found. Skipping calculation.");
+    return data;
+  }
+  
+  var newHeaders = [
+    "PSF Status",
+    "PSF Type",
+    "Tiene Gemini Enterprise en ell Workload",
+    "Tiene Gemini Enterprise en la Oportunidad?",
+    "Aparently is GE"
+  ];
+  
+  var headersToAdd = [];
+  for (var i = 0; i < newHeaders.length; i++) {
+    if (headers.indexOf(newHeaders[i]) === -1) {
+      headersToAdd.push(newHeaders[i]);
+    }
+  }
+  
+  if (headersToAdd.length === 0) {
+    Logger.log("Calculated columns already exist.");
+    return data;
+  }
+  
+  data[0] = headers.concat(headersToAdd);
+  
+  var geRegex = /Enterprise|\bGE\b/i;
+  
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var psfInv = row[psfInvIdx] || "";
+    var workloadName = row[workloadIdx] || "";
+    var opportunity = row[opportunityIdx] || "";
+    
+    // 1. PSF Status
+    var psfStatus = "";
+    if (psfInv !== "") {
+      if (psfInv.indexOf("Approved") !== -1) {
+        psfStatus = "Approved";
+      } else if (psfInv.indexOf("Canceled") !== -1) {
+        psfStatus = "Canceled";
+      } else {
+        psfStatus = "psf-request";
+      }
+    }
+    
+    // 2. PSF Type
+    var psfType = "";
+    var match = psfInv.match(/TYPE: ([^|]*)/); // Match up to pipe or end
+    if (match) {
+      psfType = match[1].trim();
+    }
+    
+    // 3. Tiene Gemini Enterprise en ell Workload
+    var hasGEInWorkload = geRegex.test(workloadName);
+    
+    // 4. Tiene Gemini Enterprise en la Oportunidad?
+    var hasGEInOpp = geRegex.test(opportunity);
+    
+    // 5. Aparently is GE
+    var isGE = hasGEInWorkload || hasGEInOpp;
+    
+    var valuesToAdd = [];
+    if (headersToAdd.indexOf("PSF Status") !== -1) valuesToAdd.push(psfStatus);
+    if (headersToAdd.indexOf("PSF Type") !== -1) valuesToAdd.push(psfType);
+    if (headersToAdd.indexOf("Tiene Gemini Enterprise en ell Workload") !== -1) valuesToAdd.push(hasGEInWorkload);
+    if (headersToAdd.indexOf("Tiene Gemini Enterprise en la Oportunidad?") !== -1) valuesToAdd.push(hasGEInOpp);
+    if (headersToAdd.indexOf("Aparently is GE") !== -1) valuesToAdd.push(isGE ? "Gemini enterprise" : "");
+    
+    data[i] = row.concat(valuesToAdd);
+  }
+  
+  return data;
 }
 
 function trackChanges(oldData, newData) {
