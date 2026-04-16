@@ -68,9 +68,9 @@ function createOverview() {
     "Total Workloads",
     "Total Partners",
     "Total Revenue (With Partner)",
-    "Avg Revenue (With Partner)",
+    "Workload Count (With Partner)",
     "Total Revenue (No Partner)",
-    "Avg Revenue (No Partner)"
+    "Workload Count (No Partner)"
   ]];
   
   // 1. Brazil
@@ -134,7 +134,8 @@ function createOverview() {
              .setFontColor("#ffffff")
              .setFontWeight("bold")
              .setHorizontalAlignment("center")
-             .setVerticalAlignment("middle");
+             .setVerticalAlignment("middle")
+             .setWrap(true);
   overviewSheet.setRowHeight(startRow, 30);
   
   // 4. Data Formatting
@@ -146,7 +147,10 @@ function createOverview() {
   overviewSheet.getRange(startRow + 1, 1, output.length - 1, 1).setHorizontalAlignment("center");
   overviewSheet.getRange(startRow + 1, 2, output.length - 1, 1).setHorizontalAlignment("left");
   overviewSheet.getRange(startRow + 1, 3, output.length - 1, 2).setNumberFormat("0").setHorizontalAlignment("center");
-  overviewSheet.getRange(startRow + 1, 5, output.length - 1, 4).setNumberFormat("$#,##0").setHorizontalAlignment("right");
+  overviewSheet.getRange(startRow + 1, 5, output.length - 1, 1).setNumberFormat("$#,##0").setHorizontalAlignment("right");
+  overviewSheet.getRange(startRow + 1, 6, output.length - 1, 1).setNumberFormat("0").setHorizontalAlignment("right");
+  overviewSheet.getRange(startRow + 1, 7, output.length - 1, 1).setNumberFormat("$#,##0").setHorizontalAlignment("right");
+  overviewSheet.getRange(startRow + 1, 8, output.length - 1, 1).setNumberFormat("0").setHorizontalAlignment("right");
   
   // 6. Alternating Rows (Zebra Striping)
   for (var i = startRow + 1; i < startRow + output.length; i++) {
@@ -175,7 +179,14 @@ function createOverview() {
   overviewSheet.getRange(startRow + 3, 1, 1, output[0].length).setBorder(false, false, false, false, false, false);
   
   // 8. Auto-resize columns
-  overviewSheet.autoResizeColumns(1, output[0].length);
+  overviewSheet.setColumnWidth(1, 100); // A
+  overviewSheet.setColumnWidth(2, 80);  // B
+  overviewSheet.setColumnWidth(3, 80);  // C
+  overviewSheet.setColumnWidth(4, 80);  // D
+  overviewSheet.setColumnWidth(5, 115); // E
+  overviewSheet.setColumnWidth(6, 115); // F
+  overviewSheet.setColumnWidth(7, 115); // G
+  overviewSheet.setColumnWidth(8, 115); // H
   
   for (var i = startRow + 1; i < startRow + output.length; i++) {
     if (i !== startRow + 3) {
@@ -209,8 +220,6 @@ function updateSummary(obj, revenue, isNoPartner, partner) {
 
 function buildOutputRow(name, s) {
   var partnerCount = Object.keys(s.partners).length;
-  var avgWithPartner = s.countWithPartner > 0 ? s.totalRevWithPartner / s.countWithPartner : 0;
-  var avgNoPartner = s.countNoPartner > 0 ? s.totalRevNoPartner / s.countNoPartner : 0;
   
   return [
     false, // Checkbox
@@ -218,9 +227,9 @@ function buildOutputRow(name, s) {
     s.count,
     partnerCount,
     s.totalRevWithPartner,
-    avgWithPartner,
+    s.countWithPartner,
     s.totalRevNoPartner,
-    avgNoPartner
+    s.countNoPartner
   ];
 }
 

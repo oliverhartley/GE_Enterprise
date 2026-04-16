@@ -82,32 +82,70 @@ function showDrillDown(country) {
     return 0;
   });
   
-  var output = [];
-  if (country === "MCO") {
-    output.push([
-      "Partner",
-      "Country", // Added for MCO only
-      "Account Name",
-      "Workload Name",
-      "Workload Progress",
-      "Status",
-      "Annual Revenue",
-      "Account Owner",
-      "Primary CE Owner"
-    ]);
-  } else {
-    output.push([
-      "Partner",
-      "Account Name",
-      "Workload Name",
-      "Workload Progress",
-      "Status",
-      "Annual Revenue",
-      "Account Owner",
-      "Primary CE Owner"
-    ]);
+  // 1. Aggregate Partner Data
+  var partnerCounts = {};
+  for (var i = 0; i < rows.length; i++) {
+    var p = rows[i][0]; // Partner is always the first element
+    partnerCounts[p] = (partnerCounts[p] || 0) + 1;
   }
   
+  // 2. Prepare New Table Data (Partner Summary)
+  var partnerSummaryOutput = [];
+  partnerSummaryOutput.push(["Partner", "# Workloads"]); // Header row
+  
+  var partners = Object.keys(partnerCounts).sort(function(a, b) {
+    if (a === "No Partner" && b !== "No Partner") return 1;
+    if (a !== "No Partner" && b === "No Partner") return -1;
+    
+    var countA = partnerCounts[a];
+    var countB = partnerCounts[b];
+    
+    if (countA !== countB) {
+      return countB - countA; // Descending order of count
+    }
+    
+    var lowerA = a.toLowerCase();
+    var lowerB = b.toLowerCase();
+    if (lowerA < lowerB) return -1;
+    if (lowerA > lowerB) return 1;
+    return 0;
+  });
+  for (var i = 0; i < partners.length; i++) {
+    partnerSummaryOutput.push([partners[i], partnerCounts[partners[i]]]);
+  }
+  
+  // 3. Prepare Main Table Data with Title Row
+  var output = [];
+  var mainTableHeaders = [];
+  if (country === "MCO") {
+    mainTableHeaders = [
+      "Partner",
+      "Country",
+      "Account Name",
+      "Workload Name",
+      "Workload Progress",
+      "Status",
+      "Annual Revenue",
+      "Account Owner",
+      "Primary CE Owner"
+    ];
+  } else {
+    mainTableHeaders = [
+      "Partner",
+      "Account Name",
+      "Workload Name",
+      "Workload Progress",
+      "Status",
+      "Annual Revenue",
+      "Account Owner",
+      "Primary CE Owner"
+    ];
+  }
+  
+  // Add Header Row
+  output.push(mainTableHeaders);
+  
+  // Add Data Rows
   output = output.concat(rows);
   
   var sheetName = "DrillDown_" + country;
@@ -119,7 +157,12 @@ function showDrillDown(country) {
   drillSheet = ss.insertSheet(sheetName);
   
   // Write data starting at Row 1
-  var dataRange = drillSheet.getRange(1, 1, output.length, output[0].length);
+  // Write partner summary table in Column A
+  var partnerRange = drillSheet.getRange(1, 1, partnerSummaryOutput.length, partnerSummaryOutput[0].length);
+  partnerRange.setValues(partnerSummaryOutput);
+  
+  // Write main table in Column D
+  var dataRange = drillSheet.getRange(1, 4, output.length, output[0].length);
   dataRange.setValues(output);
   
   // Try to use native Tables feature via Sheets API v4
@@ -136,10 +179,24 @@ function showDrillDown(country) {
               name: tableName,
               range: {
                 sheetId: sheetId,
-                startRowIndex: 0,
+                startRowIndex: 0, // Start at headers (Row 1)
                 endRowIndex: output.length,
-                startColumnIndex: 0,
-                endColumnIndex: output[0].length
+                startColumnIndex: 3, // Column D
+                endColumnIndex: 3 + output[0].length
+              }
+            }
+          }
+        },
+        {
+          addTable: {
+            table: {
+              name: tableName + "_summary",
+              range: {
+                sheetId: sheetId,
+                startRowIndex: 0, // Start at headers (Row 1)
+                endRowIndex: partnerSummaryOutput.length,
+                startColumnIndex: 0, // Column A
+                endColumnIndex: partnerSummaryOutput[0].length // 2 columns
               }
             }
           }
@@ -149,39 +206,48 @@ function showDrillDown(country) {
     
     Sheets.Spreadsheets.batchUpdate(resource, ss.getId());
     tableCreated = true;
-    Logger.log("Native table created via Sheets API for " + country + " with name " + tableName);
+    Logger.log("Native tables created via Sheets API for " + country);
   } catch (e) {
     SpreadsheetApp.getUi().alert("Sheets API Error for " + country + ": " + e.message);
     Logger.log("Sheets API failed to create table, falling back to simulation: " + e.message);
   }
   
-  // Color the header row directly, even for native tables!
+  // Color the header rows and titles
   var headerColor = getColorForCountry(country);
-  var headerRange = drillSheet.getRange(1, 1, 1, output[0].length);
-  headerRange.setBackground(headerColor)
-             .setFontColor("#ffffff")
-             .setFontWeight("bold")
-             .setHorizontalAlignment("center");
   
-  // Add dropdown to Status column
+  // Summary Table Formatting
+  var sumHeaderRange = drillSheet.getRange(1, 1, 1, partnerSummaryOutput[0].length);
+  sumHeaderRange.setBackground(headerColor)
+                .setFontColor("#ffffff")
+                .setFontWeight("bold")
+                .setHorizontalAlignment("center");
+                
+  // Main Table Formatting
+  var mainHeaderRange = drillSheet.getRange(1, 4, 1, output[0].length);
+  mainHeaderRange.setBackground(headerColor)
+                 .setFontColor("#ffffff")
+                 .setFontWeight("bold")
+                 .setHorizontalAlignment("center");
+  
+  // Add dropdown to Status column (Main Table)
   var statusCol = (country === "MCO") ? 6 : 5;
-  var statusRange = drillSheet.getRange(2, statusCol, output.length - 1, 1);
+  var statusRange = drillSheet.getRange(2, statusCol + 3, output.length - 1, 1); // Data starts at row 2, Col D is offset 3
   var rule = SpreadsheetApp.newDataValidation()
     .requireValueInList(['On Track', 'Delayed by Customer', 'Delayed by Partner', 'Delayed by Google'], true)
-    .setAllowInvalid(true) // Allow custom text too
+    .setAllowInvalid(true)
     .build();
   statusRange.setDataValidation(rule);
   
   // Add Conditional Formatting to Status column
   var ruleOnTrack = SpreadsheetApp.newConditionalFormatRule()
     .whenTextEqualTo("On Track")
-    .setBackground("#d1e7dd") // Soft green
+    .setBackground("#d1e7dd")
     .setRanges([statusRange])
     .build();
     
   var ruleDelayed = SpreadsheetApp.newConditionalFormatRule()
     .whenTextContains("Delayed")
-    .setBackground("#fff3cd") // Soft yellow
+    .setBackground("#fff3cd")
     .setRanges([statusRange])
     .build();
     
@@ -191,30 +257,47 @@ function showDrillDown(country) {
   
   // Fallback to simulation if native table failed
   if (!tableCreated) {
-    // Alternating rows
+    // Alternating rows for Main Table
     for (var i = 2; i <= output.length; i++) {
+      var r = drillSheet.getRange(i, 4, 1, output[0].length);
       if (i % 2 === 0) {
-        drillSheet.getRange(i, 1, 1, output[0].length).setBackground("#f9f9f9");
+        r.setBackground("#f9f9f9");
       } else {
-        drillSheet.getRange(i, 1, 1, output[0].length).setBackground("#ffffff");
+        r.setBackground("#ffffff");
       }
     }
     
-    // Add filter
-    drillSheet.getRange(1, 1, output.length, output[0].length).createFilter();
+    // Alternating rows for Summary Table
+    for (var i = 2; i <= partnerSummaryOutput.length; i++) {
+      var r = drillSheet.getRange(i, 1, 1, partnerSummaryOutput[0].length);
+      if (i % 2 === 0) {
+        r.setBackground("#f9f9f9");
+      } else {
+        r.setBackground("#ffffff");
+      }
+    }
+    
+    // Add filters (Manual if native failed)
+    drillSheet.getRange(1, 1, partnerSummaryOutput.length, partnerSummaryOutput[0].length).createFilter();
+    drillSheet.getRange(1, 4, output.length, output[0].length).createFilter();
   }
   
   // Common formatting (currency, width, wrap)
   var revenueCol = (country === "MCO") ? 7 : 6;
-  drillSheet.getRange(2, revenueCol, output.length - 1, 1)
+  drillSheet.getRange(2, revenueCol + 3, output.length - 1, 1)
             .setNumberFormat("$#,##0")
             .setHorizontalAlignment("right");
             
-  for (var col = 1; col <= output[0].length; col++) {
-    drillSheet.setColumnWidth(col, 200);
+  // Set widths
+  for (var col = 1; col <= 3 + output[0].length; col++) {
+    if (col === 3) {
+      drillSheet.setColumnWidth(col, 50); // Spacer column
+    } else {
+      drillSheet.setColumnWidth(col, 150);
+    }
   }
   
-  drillSheet.getRange(1, 1, output.length, output[0].length).setWrap(true);
+  drillSheet.getRange(1, 1, Math.max(output.length, partnerSummaryOutput.length), 3 + output[0].length).setWrap(true);
   
   ss.setActiveSheet(drillSheet);
 }
