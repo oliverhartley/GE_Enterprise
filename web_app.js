@@ -39,7 +39,7 @@ function doGet(e) {
 
 function sendTestStatusEmail() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName("DrillDown_Mexico");
+  var sheet = ss.getSheetByName("DrillDown_Chile");
   if (!sheet) {
     Logger.log("Sheet DrillDown_Mexico not found.");
     return;
@@ -59,8 +59,8 @@ function sendTestStatusEmail() {
     return;
   }
   
-  var targetOwner = "Manuel Rivas";
-  var targetEmail = "oliverhartley@google.com"; // User's email for testing
+  var targetOwner = "Patricio Perez";
+  var targetEmail = "patricio.perez@google.com"; // Assuming his email
   
   var htmlBody = "<p style='font-family: Arial, sans-serif; font-size: 14px; color: #374151; margin-bottom: 12px;'>To make sure we're pushing our partners effectively and keeping the momentum high on your <strong>GE Workloads</strong>, I need a quick hand from you.</p>";
   htmlBody += "<p style='font-family: Arial, sans-serif; font-size: 14px; color: #374151; margin-bottom: 12px;'>Please <strong>click the status button</strong> in the table below that matches the current reality for your accounts.</p>";
