@@ -62,10 +62,15 @@ function sendTestStatusEmail() {
   var targetOwner = "Manuel Rivas";
   var targetEmail = "oliverhartley@google.com"; // User's email for testing
   
-  var htmlBody = "<p style='font-family: Arial, sans-serif; font-size: 14px; color: #374151; margin-bottom: 12px;'>In order to help you push the partner to advance in their GE Workloads, please click on the <strong>Update status</strong>...</p>";
-  htmlBody += "<p style='font-family: Arial, sans-serif; font-size: 14px; color: #374151; margin-bottom: 12px;'>If the current status is empty is because i don't have that data and the next time it will be there.</p>";
-  htmlBody += "<p style='font-family: Arial, sans-serif; font-size: 14px; color: #374151; margin-bottom: 12px;'>This is \"like\" a web app, but its not... i need you to actualy <strong>CLICK</strong> in the corresponding Update status, You will feel nothing happend.... but it will update my follow up with the partner :)</p>";
-  htmlBody += "<p style='font-family: Arial, sans-serif; font-size: 14px; color: #374151; margin-bottom: 16px;'>If nothing need to be updated, do nothing :)</p>";
+  var htmlBody = "<p style='font-family: Arial, sans-serif; font-size: 14px; color: #374151; margin-bottom: 12px;'>To make sure we're pushing our partners effectively and keeping the momentum high on your <strong>GE Workloads</strong>, I need a quick hand from you.</p>";
+  htmlBody += "<p style='font-family: Arial, sans-serif; font-size: 14px; color: #374151; margin-bottom: 12px;'>Please <strong>click the status button</strong> in the table below that matches the current reality for your accounts.</p>";
+  htmlBody += "<p style='font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; color: #1F2937; margin-bottom: 8px;'>A couple of quick tips:</p>";
+  htmlBody += "<ul style='font-family: Arial, sans-serif; font-size: 14px; color: #374151; margin-bottom: 12px; padding-left: 20px;'>";
+  htmlBody += "<li style='margin-bottom: 6px;'><strong>The \"Stealth\" Update:</strong> This works like a mini web app, but it's built for speed. When you click, <strong>it will feel like nothing happened</strong> (no new tabs or pop-ups), but your click instantly updates my follow-up tracker.</li>";
+  htmlBody += "<li style='margin-bottom: 6px;'><strong>Missing Data:</strong> If a \"Current Status\" is blank, it just means I'm missing that specific date. It'll sync up in the next email once you've clicked an update.</li>";
+  htmlBody += "<li style='margin-bottom: 6px;'><strong>Status looks good?</strong> If the current status is already accurate, you don't need to do anything!</li>";
+  htmlBody += "</ul>";
+  htmlBody += "<p style='font-family: Arial, sans-serif; font-size: 14px; color: #374151; margin-bottom: 16px;'>Your input helps me help you push these partners to the finish line.</p>";
   htmlBody += "<table style='border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; border: 1px solid #E5E7EB;'>";
   htmlBody += "<tr style='background-color: #F3F4F6; color: #1F2937; text-align: left;'>";
   htmlBody += "<th style='padding: 12px; border: 1px solid #E5E7EB;'>Partner</th>";
